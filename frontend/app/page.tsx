@@ -1,9 +1,5 @@
-import { Cards } from '@/features/cards/components/cards';
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  return (
-    <main className="flex h-dvh w-full flex-col justify-center items-center">
-      <Cards />
-    </main>
-  );
+  redirect('/decks/test');
 }
