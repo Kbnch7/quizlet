@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import { MainPage } from '@/components/pages/main-page';
 
 export default function Home() {
-  redirect('/decks/test');
+  return <MainPage />;
 }
