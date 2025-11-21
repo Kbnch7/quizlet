@@ -5,16 +5,19 @@ from minio.commonconfig import CopySource
 from urllib.parse import urlparse
 from datetime import timedelta
 
+
 class MinioClient:
     def __init__(self, endpoint, access_key, secret_key, secure=False):
         self.client = Minio(
             endpoint,
             access_key=access_key,
             secret_key=secret_key,
-            secure=secure
+            secure=secure,
         )
 
-    def presigned_put_url(self, bucket_name: str, object_name: str, expires: int = 3600) -> str:
+    def presigned_put_url(
+        self, bucket_name: str, object_name: str, expires: int = 3600
+    ) -> str:
         """
         Генерирует presigned URL для загрузки файла (HTTP PUT)
         :param bucket_name: имя бакета
@@ -23,12 +26,16 @@ class MinioClient:
         :return: presigned URL строка
         """
         try:
-            url = self.client.presigned_put_object(bucket_name, object_name, expires=timedelta(seconds=expires))
+            url = self.client.presigned_put_object(
+                bucket_name, object_name, expires=timedelta(seconds=expires)
+            )
             return url
         except S3Error as e:
             raise RuntimeError(f"Error generating presigned PUT URL: {e}")
 
-    def presigned_get_url(self, bucket_name: str, object_name: str, expires: int = 3600) -> str:
+    def presigned_get_url(
+        self, bucket_name: str, object_name: str, expires: int = 3600
+    ) -> str:
         """
         Генерирует presigned URL для скачивания файла (HTTP GET)
         :param bucket_name: имя бакета
@@ -37,7 +44,9 @@ class MinioClient:
         :return: presigned URL строка
         """
         try:
-            url = self.client.presigned_get_object(bucket_name, object_name, expires=timedelta(seconds=expires))
+            url = self.client.presigned_get_object(
+                bucket_name, object_name, expires=timedelta(seconds=expires)
+            )
             return url
         except S3Error as e:
             raise RuntimeError(f"Error generating presigned GET URL: {e}")
@@ -49,9 +58,13 @@ class MinioClient:
         except S3Error as e:
             raise RuntimeError(f"Error ensuring bucket: {e}")
 
-    def copy_object(self, bucket_name: str, src_object: str, dst_object: str) -> None:
+    def copy_object(
+        self, bucket_name: str, src_object: str, dst_object: str
+    ) -> None:
         try:
-            self.client.copy_object(bucket_name, dst_object, CopySource(bucket_name, src_object))
+            self.client.copy_object(
+                bucket_name, dst_object, CopySource(bucket_name, src_object)
+            )
         except S3Error as e:
             raise RuntimeError(f"Error copying object: {e}")
 

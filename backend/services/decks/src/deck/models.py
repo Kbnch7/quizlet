@@ -13,6 +13,7 @@ class SDeckCreate(BaseModel):
     categories: Optional[List[str]] = None
     tags: Optional[List[str]] = None
 
+
 class SDeckUpdate(BaseModel):
     title: Optional[str] = None
     owner_id: Optional[int] = None
@@ -20,17 +21,17 @@ class SDeckUpdate(BaseModel):
     categories: Optional[List[str]] = None
     tags: Optional[List[str]] = None
 
+
 class SDeckResponse(BaseModel):
     id: int
     owner_id: int
     title: str
     description: Optional[str] = None
+    cards_amount: int = 0
     categories: Optional[List[SCategoryResponse]] = None
     tags: Optional[List[STagResponse]] = None
 
-    model_config = ConfigDict(
-        from_attributes=True
-    )
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SDeckDetailedResponse(SDeckResponse):

@@ -32,7 +32,6 @@ async def init_db():
             {"name": "Биология", "slug": "biology"},
             {"name": "Литература", "slug": "literature"},
             {"name": "География", "slug": "geography"},
-
             {"name": "Другое", "slug": "other"},
         ]
 
@@ -45,5 +44,3 @@ async def init_db():
 
 if __name__ == "__main__":
     asyncio.run(init_db())
-
-

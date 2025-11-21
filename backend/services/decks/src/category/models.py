@@ -18,5 +18,3 @@ class SCategoryCreate(BaseModel):
 class SCategoryUpdate(BaseModel):
     name: Optional[str] = None
     slug: Optional[str] = None
-
-

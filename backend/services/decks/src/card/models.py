@@ -1,20 +1,22 @@
 from typing import Optional, Literal
 from pydantic import BaseModel, ConfigDict
 
+
 class SCardCreate(BaseModel):
-    deck_id: int
     front_text: str
     front_image_url: Optional[str] = None
     back_text: str
     back_image_url: Optional[str] = None
     order_index: Optional[int] = 0
 
+
 class SCardUpdate(BaseModel):
-    front_text: str
-    front_image_url: str
-    back_text: str
-    back_image_url: str
-    order_index: int
+    front_text: Optional[str] = None
+    front_image_url: Optional[str] = None
+    back_text: Optional[str] = None
+    back_image_url: Optional[str] = None
+    order_index: Optional[int] = None
+
 
 class SCardResponse(BaseModel):
     id: int
@@ -25,15 +27,12 @@ class SCardResponse(BaseModel):
     back_image_url: Optional[str] = None
     order_index: Optional[int] = 0
 
-    model_config = ConfigDict(
-        from_attributes=True
-    )
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SCardBulkItem(BaseModel):
     """Элемент для bulk-операций над карточками.
 
-    Правила:
     - Если указан id и присутствуют поля карточки → обновление существующей карточки.
     - Если id не указан → создание новой карточки.
     - Если to_delete == true и указан id → удаление карточки с этим id (остальные поля игнорируются).
@@ -52,7 +51,7 @@ class SCardBulkItem(BaseModel):
 
 
 class SPresignUploadRequest(BaseModel):
-    filename: str  # имя файла, чтобы получить расширение
+    filename: str  # имя файла (чтобы получить расширение)
 
 
 class SPresignUploadResponse(BaseModel):

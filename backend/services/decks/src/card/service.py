@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.entities.card import Card
+from src.entities import Card, Deck, UserCardStats, CardResult
 from src.card.models import SCardBulkItem
 from src.utils.minio import extract_object_key_from_url
 from src.utils.storage import get_storage_client, BUCKET_CARDS
@@ -29,6 +29,33 @@ async def create_card(
         order_index=order_index or 0,
     )
     session.add(card)
+    await session.flush()
+    deck = await session.get(Deck, deck_id)
+    if deck:
+        deck.cards_amount += 1
+    await session.flush()
+
+    stats_query = await session.execute(
+        select(UserCardStats.user_id)
+        .join(Card, Card.id == UserCardStats.card_id)
+        .where(Card.deck_id == deck_id)
+    )
+    user_ids = {row[0] for row in stats_query.all()}
+    for user_id in user_ids:
+        stats = UserCardStats(
+            user_id=user_id,
+            card_id=card.id,
+            success_count=0,
+            fail_count=0,
+            total_answers=0,
+            correct_rate=0.0,
+            streak=0,
+            difficulty_score=0.5,
+            is_learned=False,
+            last_result=None,
+            last_answered_at=None,
+        )
+        session.add(stats)
     await session.flush()
     await session.refresh(card)
     return card
@@ -59,9 +86,9 @@ async def update_card(
         card.back_image_url = back_image_url
     if order_index is not None:
         card.order_index = order_index
-    
+
     # Перемещение фотографий из temp в основную структуру
-    
+
     storage = get_storage_client()
 
     if front_image_url:
@@ -69,7 +96,9 @@ async def update_card(
         if src_key.startswith("temp/"):
             _, _, ext = src_key.rpartition(".")
             ext_part = f".{ext}" if ext else ""
-            dst_key = f"decks/{card.deck_id}/card/{card.id}/images/front{ext_part}"
+            dst_key = (
+                f"decks/{card.deck_id}/card/{card.id}/images/front{ext_part}"
+            )
             storage.copy_object(BUCKET_CARDS, src_key, dst_key)
             storage.remove_object(BUCKET_CARDS, src_key)
             card.front_image_url = dst_key
@@ -78,10 +107,21 @@ async def update_card(
         if src_key.startswith("temp/"):
             _, _, ext = src_key.rpartition(".")
             ext_part = f".{ext}" if ext else ""
-            dst_key = f"decks/{card.deck_id}/card/{card.id}/images/back{ext_part}"
+            dst_key = (
+                f"decks/{card.deck_id}/card/{card.id}/images/back{ext_part}"
+            )
             storage.copy_object(BUCKET_CARDS, src_key, dst_key)
             storage.remove_object(BUCKET_CARDS, src_key)
             card.back_image_url = dst_key
+
+    stats_query = await session.execute(
+        select(UserCardStats).where(UserCardStats.card_id == card.id)
+    )
+    stats = stats_query.scalars().all()
+    for stat in stats:
+        stat.streak = 0
+        stat.is_learned = False
+        stat.difficulty_score = 0.5
 
     await session.flush()
     await session.refresh(card)
@@ -89,6 +129,17 @@ async def update_card(
 
 
 async def delete_card(session: AsyncSession, card_id: int) -> None:
+    card = await get_card(session, card_id)
+    if card:
+        deck = await session.get(Deck, card.deck_id)
+        if deck:
+            deck.cards_amount = max(0, deck.cards_amount - 1)
+    await session.execute(
+        delete(CardResult).where(CardResult.card_id == card_id)
+    )
+    await session.execute(
+        delete(UserCardStats).where(UserCardStats.card_id == card_id)
+    )
     await session.execute(delete(Card).where(Card.id == card_id))
 
 
@@ -102,31 +153,60 @@ async def bulk_upsert_delete_cards(
     ids_to_touch = [it.id for it in items if it.id]
     id_to_card: Dict[int, Card] = {}
     if ids_to_touch:
-        result = await session.execute(select(Card).where(Card.id.in_(ids_to_touch)))
+        result = await session.execute(
+            select(Card).where(Card.id.in_(ids_to_touch))
+        )
         fetched = result.scalars().all()
         id_to_card = {c.id: c for c in fetched}
 
     for idx, item in enumerate(items):
         if item.to_delete:
             if not item.id:
-                errors.append({"index": str(idx), "error": "to_delete requires id"})
+                errors.append(
+                    {"index": str(idx), "error": "to_delete requires id"}
+                )
                 continue
             card = id_to_card.get(item.id)
             if not card:
-                errors.append({"index": str(idx), "error": f"card {item.id} not found"})
+                errors.append(
+                    {"index": str(idx), "error": f"card {item.id} not found"}
+                )
             elif card.deck_id != deck_id:
-                errors.append({"index": str(idx), "error": f"card {item.id} does not belong to deck {deck_id}"})
+                errors.append(
+                    {
+                        "index": str(idx),
+                        "error": (
+                            f"card {item.id} does not belong to deck {deck_id}"
+                        ),
+                    }
+                )
         elif item.id:
             # update
             card = id_to_card.get(item.id)
             if not card:
-                errors.append({"index": str(idx), "error": f"card {item.id} not found"})
+                errors.append(
+                    {"index": str(idx), "error": f"card {item.id} not found"}
+                )
             elif card.deck_id != deck_id:
-                errors.append({"index": str(idx), "error": f"card {item.id} does not belong to deck {deck_id}"})
+                errors.append(
+                    {
+                        "index": str(idx),
+                        "error": (
+                            f"card {item.id} does not belong to deck {deck_id}"
+                        ),
+                    }
+                )
         else:
             # create
             if not item.front_text or not item.back_text:
-                errors.append({"index": str(idx), "error": "front_text and back_text are required for creation"})
+                errors.append(
+                    {
+                        "index": str(idx),
+                        "error": (
+                            "front_text and back_text are required for creation"
+                        ),
+                    }
+                )
 
     if errors:
         return errors
@@ -151,9 +231,11 @@ async def bulk_upsert_delete_cards(
                 back_image_url=item.back_image_url,
                 order_index=item.order_index,
             )
-            # move images if coming from temp
+            # переместить картинку из temp
             if item.front_image_url:
-                src_key = extract_object_key_from_url(item.front_image_url, BUCKET_CARDS)
+                src_key = extract_object_key_from_url(
+                    item.front_image_url, BUCKET_CARDS
+                )
                 if src_key.startswith("temp/"):
                     _, _, ext = src_key.rpartition(".")
                     ext_part = f".{ext}" if ext else ""
@@ -162,7 +244,9 @@ async def bulk_upsert_delete_cards(
                     storage.remove_object(BUCKET_CARDS, src_key)
                     updated.front_image_url = dst_key
             if item.back_image_url:
-                src_key = extract_object_key_from_url(item.back_image_url, BUCKET_CARDS)
+                src_key = extract_object_key_from_url(
+                    item.back_image_url, BUCKET_CARDS
+                )
                 if src_key.startswith("temp/"):
                     _, _, ext = src_key.rpartition(".")
                     ext_part = f".{ext}" if ext else ""
@@ -180,9 +264,11 @@ async def bulk_upsert_delete_cards(
                 back_image_url=item.back_image_url,
                 order_index=item.order_index,
             )
-            # move images for created card
+            # переместить картинку из temp
             if item.front_image_url:
-                src_key = extract_object_key_from_url(item.front_image_url, BUCKET_CARDS)
+                src_key = extract_object_key_from_url(
+                    item.front_image_url, BUCKET_CARDS
+                )
                 if src_key.startswith("temp/"):
                     _, _, ext = src_key.rpartition(".")
                     ext_part = f".{ext}" if ext else ""
@@ -191,7 +277,9 @@ async def bulk_upsert_delete_cards(
                     storage.remove_object(BUCKET_CARDS, src_key)
                     created.front_image_url = dst_key
             if item.back_image_url:
-                src_key = extract_object_key_from_url(item.back_image_url, BUCKET_CARDS)
+                src_key = extract_object_key_from_url(
+                    item.back_image_url, BUCKET_CARDS
+                )
                 if src_key.startswith("temp/"):
                     _, _, ext = src_key.rpartition(".")
                     ext_part = f".{ext}" if ext else ""
@@ -200,4 +288,3 @@ async def bulk_upsert_delete_cards(
                     storage.remove_object(BUCKET_CARDS, src_key)
                     created.back_image_url = dst_key
             await session.flush()
-

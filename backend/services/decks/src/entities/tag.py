@@ -4,11 +4,22 @@ from sqlalchemy.orm import relationship
 from . import Base
 
 deck_tags = Table(
-    'deck_tags',
+    "deck_tags",
     Base.metadata,
-    Column('deck_id', Integer, ForeignKey('decks.id', ondelete='CASCADE'), primary_key=True),
-    Column('tag_id', Integer, ForeignKey('tags.id', ondelete='CASCADE'), primary_key=True)
+    Column(
+        "deck_id",
+        Integer,
+        ForeignKey("decks.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "tag_id",
+        Integer,
+        ForeignKey("tags.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
 )
+
 
 class Tag(Base):
     __tablename__ = "tags"
@@ -17,4 +28,6 @@ class Tag(Base):
     name = Column(String(255), nullable=False, unique=True)
     slug = Column(String(255), nullable=False, unique=True)
 
-    decks = relationship("Deck", secondary=deck_tags, back_populates="tags", lazy="selectin")
+    decks = relationship(
+        "Deck", secondary=deck_tags, back_populates="tags", lazy="selectin"
+    )

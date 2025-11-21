@@ -5,20 +5,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.core import get_async_db_session
 from .models import SCategoryResponse, SCategoryCreate, SCategoryUpdate
-from .service import list_categories, create_category, update_category, delete_category
+from .service import (
+    list_categories,
+    create_category,
+    update_category,
+    delete_category,
+)
 from src.auth import get_current_user, UserContext
-
 
 router = APIRouter(prefix="/categories", tags=["category"])
 
 
 @router.get("/", response_model=List[SCategoryResponse])
-async def get_categories(session: AsyncSession = Depends(get_async_db_session)):
+async def get_categories(
+    session: AsyncSession = Depends(get_async_db_session),
+):
     categories = await list_categories(session)
     return categories
 
 
-@router.post("/", response_model=SCategoryResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=SCategoryResponse, status_code=status.HTTP_201_CREATED
+)
 async def admin_create_category(
     payload: SCategoryCreate,
     session: AsyncSession = Depends(get_async_db_session),
@@ -40,7 +48,9 @@ async def admin_update_category(
 ):
     if not user or not user.is_manager:
         raise HTTPException(status_code=403, detail="Forbidden")
-    cat = await update_category(session, category_id=category_id, name=payload.name, slug=payload.slug)
+    cat = await update_category(
+        session, category_id=category_id, name=payload.name, slug=payload.slug
+    )
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
     await session.commit()
@@ -60,5 +70,3 @@ async def admin_delete_category(
         raise HTTPException(status_code=404, detail="Category not found")
     await session.commit()
     return None
-
-

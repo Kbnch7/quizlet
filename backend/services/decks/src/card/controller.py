@@ -5,13 +5,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import src.card.service as service
 from src.database.core import get_async_db_session
-from .models import SCardCreate, SCardUpdate, SCardResponse, SCardBulkItem, SPresignUploadRequest, SPresignUploadResponse
+from .models import (
+    SCardCreate,
+    SCardUpdate,
+    SCardResponse,
+    SCardBulkItem,
+    SPresignUploadRequest,
+    SPresignUploadResponse,
+)
 from src.auth import get_current_user, UserContext, is_authorized_for_resource
-from src.entities.deck import Deck
+from src.entities import Deck
 from sqlalchemy import select
 from src.utils.storage import get_storage_client, BUCKET_CARDS
 from uuid import uuid4
-
 
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "miniouser")
@@ -28,13 +34,17 @@ def _signer_client():
 
 
 def _presign_card_images(card):
-    """Заменить front_image_url и back_image_url в карточке (Card) на presigned_url"""
+    """Заменить front_image_url и back_image_url в карточке на presigned_url"""
     bucket = BUCKET_CARDS
     signer = _signer_client()
     if card.front_image_url and not card.front_image_url.startswith("temp/"):
-        card.front_image_url = signer.presigned_get_url(bucket, card.front_image_url)
+        card.front_image_url = signer.presigned_get_url(
+            bucket, card.front_image_url
+        )
     if card.back_image_url and not card.back_image_url.startswith("temp/"):
-        card.back_image_url = signer.presigned_get_url(bucket, card.back_image_url)
+        card.back_image_url = signer.presigned_get_url(
+            bucket, card.back_image_url
+        )
 
 
 @router.post("/{deck_id}/cards", response_model=SCardResponse)
@@ -44,12 +54,18 @@ async def create_card(
     session: AsyncSession = Depends(get_async_db_session),
     user: Optional[UserContext] = Depends(get_current_user),
 ):
-    deck = (await session.execute(select(Deck).where(Deck.id == deck_id))).scalars().first()
+    deck = (
+        (await session.execute(select(Deck).where(Deck.id == deck_id)))
+        .scalars()
+        .first()
+    )
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")
     if not is_authorized_for_resource(deck.owner_id, user):
         raise HTTPException(status_code=403, detail="Forbidden")
-    card = await service.create_card(session, deck_id=deck_id, **payload.model_dump())
+    card = await service.create_card(
+        session, deck_id=deck_id, **payload.model_dump()
+    )
     await session.commit()
     _presign_card_images(card)
     return card
@@ -85,7 +101,7 @@ async def delete_card(
     card = await service.get_card(session, card_id)
     if not card or card.deck_id != deck_id:
         raise HTTPException(status_code=404, detail="Card not found")
-    deck = await session.get()
+    deck = card.deck
     if deck and not is_authorized_for_resource(deck.owner_id, user):
         raise HTTPException(status_code=403, detail="Forbidden")
     await service.delete_card(session, card_id)
@@ -97,7 +113,7 @@ async def delete_card(
 async def bulk_cards(
     deck_id: int,
     items: List[SCardBulkItem] = Body(
-        ..., 
+        ...,
         description=(
             "Bulk-операции над карточками. Правила:\n"
             "- Если объект содержит id и поля — обновить существующую карточку.\n"
@@ -111,28 +127,27 @@ async def bulk_cards(
                     {
                         "front_text": "Q1",
                         "back_text": "A1",
-                        "fron_image_url": "temp/{user_id}/uploads/{uuid}.{ext}",
-                        "order_index": 0}
+                        "fron_image_url": (
+                            "temp/{user_id}/uploads/{uuid}.{ext}"
+                        ),
+                        "order_index": 0,
+                    }
                 ],
             },
             "update": {
                 "summary": "Обновление",
-                "value": [
-                    {"id": 12, "front_text": "New Q", "order_index": 2}
-                ],
+                "value": [{"id": 12, "front_text": "New Q", "order_index": 2}],
             },
             "delete": {
                 "summary": "Удаление",
-                "value": [
-                    {"id": 13, "to_delete": True}
-                ],
+                "value": [{"id": 13, "to_delete": True}],
             },
             "mixed": {
                 "summary": "Смешанный набор",
                 "value": [
                     {"front_text": "Q2", "back_text": "A2"},
                     {"id": 5, "back_text": "A1 updated"},
-                    {"id": 8, "to_delete": True}
+                    {"id": 8, "to_delete": True},
                 ],
             },
         },
@@ -169,6 +184,6 @@ async def presign_card_image(
     object_key = f"temp/{user.id}/uploads/{uuid4().hex}{ext_part}"
     put_url = client.presigned_put_url(MINIO_BUCKET_CARDS, object_key)
     get_url = client.presigned_get_url(MINIO_BUCKET_CARDS, object_key)
-    return SPresignUploadResponse(put_url=put_url, get_url=get_url, object_key=object_key)
-
-
+    return SPresignUploadResponse(
+        put_url=put_url, get_url=get_url, object_key=object_key
+    )
