@@ -1,5 +1,3 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
 ## Getting Started
 
 First, run the development server:
@@ -16,21 +14,50 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Frontend
 
-## Learn More
+язык: typescript,
+фреймворк: nextjs (App Router),
+client fetch: tanstack query,
+state management: zustand,
+валидация: zod,
+интернационализация: i18n (для next'а рабочее из коробки),
+стилизация: tailwindcss,
+компоненты: shadcn-ui,
+тестирование: e2e - playwright, unit - jest
+Аналог Quizlet с бэкендом на FastAPI и фронтендом на Next.js.
 
-To learn more about Next.js, take a look at the following resources:
+# Пользовательские требования:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Для студентов (учащихся)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Как студент, я хочу создавать свои учебные карточки с терминами и определениями, чтобы легко запоминать материал. Как студент, я хочу использовать разные режимы обучения (карточки, заучивание, письмо, тестирование), чтобы выбрать наиболее эффективный для себя способ изучения. Как студент, я хочу видеть прогресс овладения материалом, чтобы понимать, какие темы нужно повторить. Как студент, я хочу прослушивать аудио к карточкам, чтобы учить материал на слух. Как студент, я хочу экспортировать и импортировать свои наборы карточек, чтобы делиться ими и использовать в других приложениях.
 
-## Deploy on Vercel
+## Для учителей (преподавателей)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Как учитель, я хочу создавать и организовывать наборы карточек для своих классов, чтобы эффективно готовить учебные материалы. Как учитель, я хочу отслеживать прогресс учеников по заданным наборам, чтобы видеть, кто освоил материал, а кто испытывает трудности. Как учитель, я хочу управлять доступом к учебным материалам и создавать различные уровни доступа (например, ученики, ассистенты), чтобы организовать процесс обучения. Как учитель, я хочу импортировать готовые наборы из публичной базы, чтобы быстро создавать свои уроки, используя уже имеющийся контент.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Для администратора платформы
+
+Как администратор, я хочу управлять пользователями и их ролями (студенты, учителя, модераторы), чтобы поддерживать порядок на платформе. Как администратор, я хочу обеспечивать безопасность данных и защиту личной информации пользователей. Как администратор, я хочу видеть общую статистику использования платформы и активности пользователей для оценки ее эффективности
+Есть уже расписанные эндпоинты: Карточки GET /deck/ - получить квизлеты (параметры - author(int), category(slug), tag(slug), my_teachers(bool), cursor(int), limit(int)) POST /deck/ - создать квизлет GET /deck/{deck_id}/ - получить квизлет PATCH /deck/{deck_id}/ - изменить квизлет DELETE /deck/{deck_id}/ - удалить квизлет GET /deck/{deck_id}/stats/ - статистика квизлета (только для владельца) POST /deck/{deck_id}/results - отправить результат тестирования GET /deck/{deck_id}/results - получить результаты тестирования POST /deck/{deck_id}/cards PATCH /deck/{deck_id}/cards/{card_id} - изменить карточку DELETE /deck/{deck_id}/cards/{card_id} - удалить карточку PATCH /decks/{deck_id}/cards - массовые операции над карточками: Если объект содержит id и поля — обновить существующую карточку. Если у объекта нет id — создать новую карточку. Если в объекте есть поле to_delete: true — удалить карточку с этим id. POST /deck/uploads/presign - выдает put- и get- presigned url для загрузки картинки GET /categories/ - получить категории Режим заучивания: POST /learn/deck/{deck_id}/sessions - создаёт или возобновляет сессию обучения по колоде; возвращает данные сессии и текущий прогресс. GET /learn/sessions/{session_id} - возвращает состояние сессии: статус, прогресс, время начала/окончания. GET /learn/sessions/{session_id}/next - выдаёт следующую карточку для обучения. POST /learn/sessions/{session_id}/cards/{card_id}/answer - принимает ответ пользователя (верно/неверно, время ответа), обновляет статистику карточки и прогресс сессии. GET /learn/sessions/{session_id}/progress - Возвращает текущий прогресс сессии: выучено/всего, процент, завершена ли сессия. POST /learn/sessions/{session_id}/finish - завершает сессию (принудительно), фиксирует время окончания и возвращает финальный прогресс. Преподавание GET /generate_link/ - сгенерировать POST /join_class/ - присоединиться к классу Статистика (права админа) GET /stats/ Авторизация POST /register/ POST /login/ POST /logout/ POST /refresh/ Управление пользователями (права админа) CRUD Users POST /users/ - создать пользователя GET /users/ - получить пользователей GET /users/{id} - получить пользователя GET /users/{email} - получить пользователя PATCH /users/{id}/ - изменить пользователя DELETE /users/{id}/ - удалить пользователя (мягко)
+
+# Требования к интерфейсу (Next.js)
+
+## Основные страницы:
+
+Главная
+Библиотека квизлетов
+Страница набора
+Страница обучения
+Панель преподавателя
+Панель администратора
+
+## UI требования:
+
+Адаптивность
+Dark/light режим
+Анимации карточек
+Система уведомлений
