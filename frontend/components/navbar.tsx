@@ -10,7 +10,7 @@ import {
 export function Navbar() {
   return (
     <NavigationMenu className="max-w-full">
-      <div className="w-full mx-2 sm:mx-4">
+      <div className="w-full px-2 sm:px-4">
         <NavigationMenuList className="flex flex-row justify-between w-full">
           <NavigationMenuItem>
             <NavigationMenuLink
@@ -20,6 +20,7 @@ export function Navbar() {
               <Link href="/">Home</Link>
             </NavigationMenuLink>
           </NavigationMenuItem>
+          <NavigationMenuItem></NavigationMenuItem>
           <NavigationMenuItem>
             <NavigationMenuLink
               asChild
