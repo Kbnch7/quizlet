@@ -1,0 +1,19 @@
+{% extends 'test_views/base.html' %}
+
+{% block title %}{{ lesson.title }}{% endblock %}
+
+{% block content %}
+<h1>{{ lesson.title }}</h1>
+<p>{{ lesson.description|default:"Нет описания" }}</p>
+<p>Курс: <a href="/courses/{{ lesson.course.id }}/">{{ lesson.course.title }}</a></p>
+
+{% if deck %}
+<h2>Колода карточек</h2>
+<p><strong>{{ deck.title }}</strong></p>
+<p>{{ deck.description|default:"" }}</p>
+<p>Карточек: {{ deck.cards_amount }}</p>
+{% else %}
+<p>Колода не привязана</p>
+{% endif %}
+{% endblock %}
+

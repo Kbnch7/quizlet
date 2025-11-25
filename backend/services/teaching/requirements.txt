@@ -1,0 +1,7 @@
+Django>=5.0
+djangorestframework>=3.14
+psycopg2-binary
+python-dotenv
+httpx
+drf-spectacular
+
