@@ -1,5 +1,5 @@
 import { MainLayout } from '@/components/layouts/main-layout';
-import { ThemeProvider } from '@/components/providers/theme-provider';
+import { ThemeProvider } from '@/components/providers/theme.provider';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { Metadata } from 'next';
 import './globals.css';

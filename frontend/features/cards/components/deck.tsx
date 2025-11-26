@@ -19,7 +19,7 @@ export function Deck({ deckId }: { deckId: string }) {
   const [cardId, setCardId] = useState(0);
   const [animating, setAnimating] = useState(false);
   const [direction, setDirection] = useState<'left' | 'right' | 'in' | null>(
-    null
+    null,
   );
   const { push } = useRouter();
 
@@ -48,8 +48,8 @@ export function Deck({ deckId }: { deckId: string }) {
             direction === 'left'
               ? 'animate-(--slide-out-left)'
               : direction === 'right'
-              ? 'animate-(--slide-out-right)'
-              : direction === 'in' && 'animate-(--slide-in)'
+                ? 'animate-(--slide-out-right)'
+                : direction === 'in' && 'animate-(--slide-in)'
           }`}
         >
           <Card card={cards[cardId]} />
