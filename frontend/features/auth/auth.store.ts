@@ -1,7 +1,7 @@
-import type { TAuthorization } from './types/authorization.type';
-import type { AppStore } from '@/lib/zustand.store';
 import type { TImmerStore } from '@/lib/types';
+import type { AppStore } from '@/lib/zustand.store';
 import { immer } from 'zustand/middleware/immer';
+import type { TAuthorization } from './types/authorization.type';
 
 type State = {
   authorization: TAuthorization | null;

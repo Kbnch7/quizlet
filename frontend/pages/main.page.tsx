@@ -5,7 +5,7 @@ export function MainPage() {
   const a = 2;
   console.log(a);
   return (
-    <main className="flex flex-col gap-2 h-dvh items-center justify-center">
+    <main className="flex flex-col gap-2 items-center justify-center">
       <h1 className="text-4xl font-bold">What&apos;s the point of this app?</h1>
       <p>
         This app is a tool for creating and studying flashcards. It&apos;s a app
