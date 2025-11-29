@@ -8,6 +8,9 @@ import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { loginSchema, TLogin } from '../types/login.type';
+import { redirect } from 'next/navigation';
+import { useEffect } from 'react';
+import { WithRedirect } from './with-redirect';
 
 export function LoginForm() {
   const form = useForm<TLogin>({
@@ -27,34 +30,41 @@ export function LoginForm() {
       refreshToken: '456',
     });
   };
+  useEffect(() => {
+    if (authorization) {
+      redirect('/decks');
+    }
+  }, [authorization]);
   return (
-    <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="flex flex-col gap-4"
-      >
-        <FormField
-          control={form.control}
-          render={({ field }) => (
-            <FormItem label="Username">
-              <Input placeholder="Enter your username" {...field} />
-            </FormItem>
-          )}
-          name="username"
-        />
-        <FormField
-          control={form.control}
-          render={({ field }) => (
-            <FormItem label="Password">
-              <Input placeholder="Enter your password" {...field} />
-            </FormItem>
-          )}
-          name="password"
-        />
-        <Button className="mt-2 mx-auto w-1/2" type="submit">
-          Login
-        </Button>
-      </form>
-    </Form>
+    <WithRedirect to="/decks">
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex flex-col gap-4"
+        >
+          <FormField
+            control={form.control}
+            render={({ field }) => (
+              <FormItem label="Username">
+                <Input placeholder="Enter your username" {...field} />
+              </FormItem>
+            )}
+            name="username"
+          />
+          <FormField
+            control={form.control}
+            render={({ field }) => (
+              <FormItem label="Password">
+                <Input placeholder="Enter your password" {...field} />
+              </FormItem>
+            )}
+            name="password"
+          />
+          <Button className="mt-2 mx-auto w-1/2" type="submit">
+            Login
+          </Button>
+        </form>
+      </Form>
+    </WithRedirect>
   );
 }

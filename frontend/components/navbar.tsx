@@ -9,10 +9,11 @@ import {
   NavigationMenuItem,
   NavigationMenuList,
 } from './ui/navigation-menu';
+import { Suspense } from 'react';
 
 export function Navbar() {
   return (
-    <NavigationMenu className="max-w-full w-full">
+    <NavigationMenu className="max-w-full w-full flex-none">
       <div className="w-full items-center py-3 px-2 sm:px-4">
         <NavigationMenuList className="flex flex-row justify-between w-full">
           <NavigationMenuItem className="w-fit">

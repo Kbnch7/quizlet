@@ -40,7 +40,7 @@ export function Deck({ deckId }: { deckId: string }) {
   };
 
   return (
-    <div className="flex flex-col h-2/3 aspect-3/4 justify-center gap-8 overflow-hidden">
+    <div className="flex flex-col m-2 w-5/6 sm:w-2/7 aspect-3/4 justify-center gap-8 overflow-hidden">
       <div className="relative w-full h-full">
         <div
           key={cardId}
