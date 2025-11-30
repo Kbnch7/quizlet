@@ -1,4 +1,5 @@
 import { MainLayout } from '@/components/layouts/main-layout';
+import { QueryProvider } from '@/components/providers/query.provider';
 import { ThemeProvider } from '@/components/providers/theme.provider';
 import { ZustandProvider } from '@/components/providers/zustand.provider';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -20,9 +21,11 @@ export default function RootLayout({
       <body className={`antialiased`}>
         <TooltipProvider>
           <ThemeProvider attribute={'class'} defaultTheme={'system'}>
-            <ZustandProvider>
-              <MainLayout>{children}</MainLayout>
-            </ZustandProvider>
+            <QueryProvider>
+              <ZustandProvider>
+                <MainLayout>{children}</MainLayout>
+              </ZustandProvider>
+            </QueryProvider>
           </ThemeProvider>
         </TooltipProvider>
       </body>

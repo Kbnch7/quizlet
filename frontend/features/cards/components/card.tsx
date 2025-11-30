@@ -33,7 +33,7 @@ const cardReducer: Reducer<State, Action> = (state, action) => {
 };
 
 export function Card({ card }: { card: TCard }) {
-  const { front, back } = card;
+  const { front_text, back_text } = card;
   const [state, dispatch] = useReducer(cardReducer, initialState);
 
   const onClick = () => {
@@ -54,14 +54,14 @@ export function Card({ card }: { card: TCard }) {
         }
         className={cn(
           'transform-3d transition-transform duration-250 cursor-pointer select-none relative h-full w-full',
-          state.showBack && 'rotate-y-180'
+          state.showBack && 'rotate-y-180',
         )}
       >
-        <div className="absolute h-full w-full backface-hidden bg-primary flex items-center justify-center rounded-2xl text-lg font-semibold">
-          {front}
+        <div className="absolute h-full w-full backface-hidden bg-primary flex items-center justify-center rounded-2xl text-base sm:text-lg font-semibold p-4 wrap-break-word overflow-auto">
+          {front_text}
         </div>
-        <div className="absolute h-full w-full backface-hidden bg-primary flex items-center justify-center rounded-2xl text-lg font-semibold rotate-y-180">
-          {back}
+        <div className="absolute h-full w-full backface-hidden bg-primary flex items-center justify-center rounded-2xl text-base sm:text-lg font-semibold rotate-y-180 p-4 wrap-break-word overflow-auto">
+          {back_text}
         </div>
       </div>
     </div>

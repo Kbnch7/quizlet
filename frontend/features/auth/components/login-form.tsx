@@ -6,7 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Form, FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { authApi } from '../index';
 import { loginSchema, TLogin } from '../types/login.type';
 
 export function LoginForm() {
@@ -17,15 +21,24 @@ export function LoginForm() {
       password: '',
     },
   });
-  const authorization = useAppStoreApi().use.authorization();
+  const router = useRouter();
   const setAuthorization = useAppStoreApi().use.setAuthorization();
+  const [error, setError] = useState<string | null>(null);
+
+  const loginMutation = useMutation({
+    mutationFn: authApi.login,
+    onSuccess: (data) => {
+      setAuthorization(data);
+      router.push('/decks');
+    },
+    onError: (err: Error) => {
+      setError(err.message || 'Login failed. Please try again.');
+    },
+  });
+
   const onSubmit = (data: TLogin) => {
-    console.log(data);
-    // TODO FIXME wait for backend to implement login endpoint
-    setAuthorization({
-      accessToken: '123',
-      refreshToken: '456',
-    });
+    setError(null);
+    loginMutation.mutate(data);
   };
   return (
     <Form {...form}>
@@ -51,8 +64,15 @@ export function LoginForm() {
           )}
           name="password"
         />
-        <Button className="mt-2 mx-auto w-1/2" type="submit">
-          Login
+        {error && (
+          <div className="text-destructive text-sm text-center">{error}</div>
+        )}
+        <Button
+          className="mt-2 mx-auto w-1/2"
+          type="submit"
+          disabled={loginMutation.isPending}
+        >
+          {loginMutation.isPending ? 'Logging in...' : 'Login'}
         </Button>
       </form>
     </Form>

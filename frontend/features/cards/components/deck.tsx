@@ -6,16 +6,10 @@ import { AccessibleIcon } from '@radix-ui/react-accessible-icon';
 import { ArrowLeft, ArrowRight, CheckIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { TCard } from '../types/card.type';
+import type { TCard } from '../types/card.type';
 import { Card } from './card';
 
-const cards: TCard[] = [
-  { front: 'Card 1 Front', back: 'Card 1 Back' },
-  { front: 'Card 2 Front', back: 'Card 2 Back' },
-  { front: 'Card 3 Front', back: 'Card 3 Back' },
-];
-
-export function Deck({ deckId }: { deckId: string }) {
+export function Deck({ cards, deckId }: { cards: TCard[]; deckId: string }) {
   const [cardId, setCardId] = useState(0);
   const [animating, setAnimating] = useState(false);
   const [direction, setDirection] = useState<'left' | 'right' | 'in' | null>(
@@ -39,8 +33,16 @@ export function Deck({ deckId }: { deckId: string }) {
     }, 200); // CSS duration
   };
 
+  if (cards.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-2/3">
+        <p className="text-muted-foreground">No cards in this deck</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-2/3 aspect-3/4 justify-center gap-8 overflow-hidden">
+    <div className="flex flex-col h-[60vh] sm:h-2/3 sm:aspect-3/4 justify-center gap-4 sm:gap-8 overflow-hidden">
       <div className="relative w-full h-full">
         <div
           key={cardId}
