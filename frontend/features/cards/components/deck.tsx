@@ -42,11 +42,14 @@ export function Deck({ cards, deckId }: { cards: TCard[]; deckId: string }) {
   }
 
   return (
-    <div className="flex flex-col m-2 w-5/6 sm:w-2/7 aspect-3/4 justify-center gap-8 overflow-hidden">
-      <div className="relative w-full h-full">
+    <div className="flex flex-col m-2 w-5/6 sm:w-1/2 justify-center gap-4">
+      <h2 className="text-xl font-semibold text-center text-muted-foreground">
+        Cards ({cardId + 1}/{cards.length})
+      </h2>
+      <div className="relative aspect-3/4 overflow-hidden">
         <div
           key={cardId}
-          className={`absolute w-full h-full transition-all duration-200 ${
+          className={`absolute inset-0 transition-all duration-200 ${
             direction === 'left'
               ? 'animate-(--slide-out-left)'
               : direction === 'right'
@@ -58,11 +61,12 @@ export function Deck({ cards, deckId }: { cards: TCard[]; deckId: string }) {
         </div>
       </div>
 
-      <div className="flex flex-row h-1/6 justify-around px-4">
+      <div className="flex flex-row items-center gap-2 justify-around px-4 py-2">
         <TextTooltip label="Previous card">
           <Button
-            className="rounded-full h-full aspect-square"
+            className="rounded-full w-1/2 py-6 -mt-2"
             onClick={() => handleChange(cardId - 1)}
+            variant={'outline'}
             disabled={cardId === 0}
           >
             <AccessibleIcon label="">
@@ -73,7 +77,8 @@ export function Deck({ cards, deckId }: { cards: TCard[]; deckId: string }) {
 
         <TextTooltip label="Next card">
           <Button
-            className="rounded-full h-full aspect-square"
+            className="rounded-full w-1/2 py-6 -mt-2"
+            variant={'outline'}
             onClick={() => handleChange(cardId + 1)}
           >
             {cardId !== cards.length - 1 ? (

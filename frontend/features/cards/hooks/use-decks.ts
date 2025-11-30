@@ -1,6 +1,10 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { deckApi } from '../api/deck.api';
-import type { TDeckCreate, TDeckListParams, TDeckUpdate } from '../types/deck.type';
+import type {
+  TDeckCreate,
+  TDeckListParams,
+  TDeckUpdate,
+} from '../types/deck.type';
 
 export const deckKeys = {
   all: ['decks'] as const,
@@ -44,7 +48,9 @@ export function useUpdateDeck() {
       deckApi.updateDeck(deckId, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: deckKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: deckKeys.detail(variables.deckId) });
+      queryClient.invalidateQueries({
+        queryKey: deckKeys.detail(variables.deckId),
+      });
     },
   });
 }
@@ -59,4 +65,3 @@ export function useDeleteDeck() {
     },
   });
 }
-

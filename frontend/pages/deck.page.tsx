@@ -31,7 +31,10 @@ export function DeckPage({ deckId }: { deckId: string }) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container flex flex-col items-center mx-auto px-4 py-8 max-w-4xl">
+      <div className="mb-6 flex flex-col items-center w-full">
+        <Deck cards={deck.cards} deckId={deckId} />
+      </div>
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2">{deck.title}</h1>
         {deck.description && (
@@ -50,13 +53,6 @@ export function DeckPage({ deckId }: { deckId: string }) {
             </Link>
           )}
         </div>
-      </div>
-
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-4">
-          Cards ({deck.cards.length})
-        </h2>
-        <Deck cards={deck.cards} deckId={deckId} />
       </div>
     </div>
   );
