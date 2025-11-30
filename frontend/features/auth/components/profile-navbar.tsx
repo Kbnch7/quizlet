@@ -7,12 +7,18 @@ import {
   NavigationMenuLink,
   navigationMenuTriggerStyle,
 } from '@/components/ui/navigation-menu';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useMounted } from '@/hooks/use-mounted';
 import { AvatarFallback } from '@radix-ui/react-avatar';
 import { UserCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export function ProfileNavbar() {
+  const { mounted } = useMounted();
   const auth = useAppStoreApi().use.authorization();
+  if (!mounted) {
+    return <Skeleton className="min-w-8 min-h-8 animate-pulse"></Skeleton>;
+  }
   if (!auth)
     return (
       <div className="flex flex-row gap-2">

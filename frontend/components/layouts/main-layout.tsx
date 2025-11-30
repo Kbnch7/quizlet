@@ -7,6 +7,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
     <div className="grid grid-rows-[auto_1fr_auto] items-center justify-items-center min-h-dvh w-full">
       <Navbar />
       {children}
+      <div></div>
       <Footer />
     </div>
   );

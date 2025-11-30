@@ -9,6 +9,7 @@ import {
   NavigationMenuItem,
   NavigationMenuList,
 } from './ui/navigation-menu';
+import { Suspense } from 'react';
 
 export function Navbar() {
   return (

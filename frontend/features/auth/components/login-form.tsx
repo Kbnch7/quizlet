@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { authApi } from '../index';
 import { loginSchema, TLogin } from '../types/login.type';
+import { WithRedirect } from './with-redirect';
 
 export function LoginForm() {
   const form = useForm<TLogin>({
@@ -40,41 +41,44 @@ export function LoginForm() {
     setError(null);
     loginMutation.mutate(data);
   };
+
   return (
-    <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="flex flex-col gap-4"
-      >
-        <FormField
-          control={form.control}
-          render={({ field }) => (
-            <FormItem label="Username">
-              <Input placeholder="Enter your username" {...field} />
-            </FormItem>
-          )}
-          name="username"
-        />
-        <FormField
-          control={form.control}
-          render={({ field }) => (
-            <FormItem label="Password">
-              <Input placeholder="Enter your password" {...field} />
-            </FormItem>
-          )}
-          name="password"
-        />
-        {error && (
-          <div className="text-destructive text-sm text-center">{error}</div>
-        )}
-        <Button
-          className="mt-2 mx-auto w-1/2"
-          type="submit"
-          disabled={loginMutation.isPending}
+    <WithRedirect to="/decks">
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex flex-col gap-4"
         >
-          {loginMutation.isPending ? 'Logging in...' : 'Login'}
-        </Button>
-      </form>
-    </Form>
+          <FormField
+            control={form.control}
+            render={({ field }) => (
+              <FormItem label="Username">
+                <Input placeholder="Enter your username" {...field} />
+              </FormItem>
+            )}
+            name="username"
+          />
+          <FormField
+            control={form.control}
+            render={({ field }) => (
+              <FormItem label="Password">
+                <Input placeholder="Enter your password" {...field} />
+              </FormItem>
+            )}
+            name="password"
+          />
+          {error && (
+            <div className="text-destructive text-sm text-center">{error}</div>
+          )}
+          <Button
+            className="mt-2 mx-auto w-1/2"
+            type="submit"
+            disabled={loginMutation.isPending}
+          >
+            {loginMutation.isPending ? 'Logging in...' : 'Login'}
+          </Button>
+        </form>
+      </Form>
+    </WithRedirect>
   );
 }
