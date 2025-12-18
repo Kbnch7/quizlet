@@ -12,6 +12,23 @@ class UserContext:
         return True
 
 
+@dataclass
+class AnonymousUserContext:
+    id: int = 0
+    is_manager: bool = False
+    
+    @property
+    def is_authenticated(self):
+        return False
+
+
+def get_user_context(request) -> UserContext | AnonymousUserContext:
+    user = getattr(request, 'user', None)
+    if user and isinstance(user, (UserContext, AnonymousUserContext)):
+        return user
+    return AnonymousUserContext()
+
+
 class MockJWTAuthentication(authentication.BaseAuthentication):
     def authenticate(self, request):
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')

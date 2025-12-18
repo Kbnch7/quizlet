@@ -10,15 +10,15 @@ from django.shortcuts import get_object_or_404
 from common.auth import UserContext
 from common.permissions import IsEnrollmentStudentOrManager
 from common.pagination import EnrolledAtCursorPagination
-from .models import Enrollment, LessonProgress
+from .models import Enrollment, DeckProgress
 from .serializers import (
     EnrollmentListSerializer,
     EnrollmentCreateSerializer,
     EnrollmentUpdateSerializer,
     EnrollmentDetailSerializer,
-    LessonWithProgressSerializer
+    DeckWithProgressSerializer,
 )
-from apps.lessons.models import Lesson
+from apps.courses.models import CourseDeck
 
 
 class EnrollmentViewSet(viewsets.ModelViewSet):
@@ -58,6 +58,13 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         user: UserContext = self.request.user
+        course = serializer.validated_data.get('course')
+
+        if not course.is_published:
+            raise ValidationError({
+                'course': ['Cannot enroll in unpublished course']
+            })
+        
         student_id = serializer.validated_data.get('student_id')
         
         if student_id is None:
@@ -88,59 +95,62 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         )
     
     @action(detail=True, methods=['get'])
-    def lessons(self, request, pk=None):
+    def decks(self, request, pk=None):
         enrollment = self.get_object()
-        lessons = enrollment.course.lessons.all().order_by('order_index', 'id')
-        lesson_progresses = {
-            lp.lesson_id: lp 
-            for lp in enrollment.lesson_progresses.select_related('lesson').all()
+        course_decks = enrollment.course.course_decks.order_by('order_index', 'id')
+        deck_progresses = {
+            dp.course_deck_id: dp
+            for dp in enrollment.deck_progresses.select_related('course_deck').all()
         }
         
         result = []
-        for lesson in lessons:
-            lesson_data = LessonWithProgressSerializer(lesson, context={'request': request}).data
-            progress = lesson_progresses.get(lesson.id)
+        for course_deck in course_decks:
+            deck_data = DeckWithProgressSerializer(course_deck, context={'request': request}).data
+            progress = deck_progresses.get(course_deck.id)
             
             if progress:
-                lesson_data['is_completed'] = progress.is_completed
-                lesson_data['completed_at'] = progress.completed_at
-                lesson_data['last_accessed_at'] = progress.last_accessed_at
+                deck_data['is_completed'] = progress.is_completed
+                deck_data['completed_at'] = progress.completed_at
+                deck_data['last_accessed_at'] = progress.last_accessed_at
             else:
-                lesson_data['is_completed'] = False
-                lesson_data['completed_at'] = None
-                lesson_data['last_accessed_at'] = None
+                deck_data['is_completed'] = False
+                deck_data['completed_at'] = None
+                deck_data['last_accessed_at'] = None
             
-            result.append(lesson_data)
+            result.append(deck_data)
         
         return Response(result)
     
-    @action(detail=True, methods=['get'], url_path='lessons/(?P<lesson_id>[^/.]+)')
-    def lesson_detail(self, request, pk=None, lesson_id=None):
+    @action(detail=True, methods=['get'], url_path='decks/(?P<deck_rel_id>\\d+)')
+    def deck_detail(self, request, pk=None, deck_rel_id=None):
+        """
+        deck_rel_id — это ID CourseDeck (связка курс-колода), а не ID самой колоды.
+        """
         enrollment = self.get_object()
-        lesson = get_object_or_404(Lesson, id=lesson_id, course=enrollment.course)
+        course_deck = get_object_or_404(CourseDeck, id=deck_rel_id, course=enrollment.course)
         
-        progress, _ = LessonProgress.objects.get_or_create(
+        progress, _ = DeckProgress.objects.get_or_create(
             enrollment=enrollment,
-            lesson=lesson,
-            defaults={'is_completed': False}
+            course_deck=course_deck,
+            defaults={'is_completed': False},
         )
         
-        lesson_data = LessonWithProgressSerializer(lesson, context={'request': request}).data
-        lesson_data['is_completed'] = progress.is_completed
-        lesson_data['completed_at'] = progress.completed_at
-        lesson_data['last_accessed_at'] = progress.last_accessed_at
+        deck_data = DeckWithProgressSerializer(course_deck, context={'request': request}).data
+        deck_data['is_completed'] = progress.is_completed
+        deck_data['completed_at'] = progress.completed_at
+        deck_data['last_accessed_at'] = progress.last_accessed_at
         
-        return Response(lesson_data)
+        return Response(deck_data)
     
-    @action(detail=True, methods=['post'], url_path='lessons/(?P<lesson_id>[^/.]+)/complete')
-    def lesson_complete(self, request, pk=None, lesson_id=None):
+    @action(detail=True, methods=['post'], url_path='decks/(?P<deck_rel_id>\\d+)/complete')
+    def deck_complete(self, request, pk=None, deck_rel_id=None):
         enrollment = self.get_object()
-        lesson = get_object_or_404(Lesson, id=lesson_id, course=enrollment.course)
+        course_deck = get_object_or_404(CourseDeck, id=deck_rel_id, course=enrollment.course)
         
-        progress, created = LessonProgress.objects.get_or_create(
+        progress, _ = DeckProgress.objects.get_or_create(
             enrollment=enrollment,
-            lesson=lesson,
-            defaults={'is_completed': False}
+            course_deck=course_deck,
+            defaults={'is_completed': False},
         )
         
         progress.is_completed = True
@@ -149,15 +159,15 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         progress.last_accessed_at = timezone.now()
         progress.save()
         
-        lesson_data = LessonWithProgressSerializer(lesson, context={'request': request}).data
-        lesson_data['is_completed'] = progress.is_completed
-        lesson_data['completed_at'] = progress.completed_at
-        lesson_data['last_accessed_at'] = progress.last_accessed_at
+        deck_data = DeckWithProgressSerializer(course_deck, context={'request': request}).data
+        deck_data['is_completed'] = progress.is_completed
+        deck_data['completed_at'] = progress.completed_at
+        deck_data['last_accessed_at'] = progress.last_accessed_at
         
-        return Response(lesson_data)
+        return Response(deck_data)
     
     def get_permissions(self):
-        if self.action in ['destroy', 'lessons', 'lesson_detail', 'lesson_complete']:
+        if self.action in ['destroy', 'decks', 'deck_detail', 'deck_complete']:
             return [IsEnrollmentStudentOrManager()]
         return [IsAuthenticated()]
 

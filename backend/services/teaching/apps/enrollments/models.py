@@ -1,6 +1,5 @@
 from django.db import models
-from apps.courses.models import Course
-from apps.lessons.models import Lesson
+from apps.courses.models import Course, CourseDeck
 
 
 class Enrollment(models.Model):
@@ -20,33 +19,33 @@ class Enrollment(models.Model):
         return f"Student {self.student_id} - {self.course.title}"
     
     def get_progress_percent(self):
-        total_lessons = self.course.lessons.count()
-        if total_lessons == 0:
+        total_items = self.course.course_decks.count()
+        if total_items == 0:
             return 0.0
-        completed_lessons = self.lesson_progresses.filter(is_completed=True).count()
-        return (completed_lessons / total_lessons) * 100.0
+        completed_items = self.deck_progresses.filter(is_completed=True).count()
+        return (completed_items / total_items) * 100.0
     
     def is_completed(self):
-        total_lessons = self.course.lessons.count()
-        if total_lessons == 0:
+        total_items = self.course.course_decks.count()
+        if total_items == 0:
             return False
-        completed_lessons = self.lesson_progresses.filter(is_completed=True).count()
-        return completed_lessons == total_lessons
+        completed_items = self.deck_progresses.filter(is_completed=True).count()
+        return completed_items == total_items
 
 
-class LessonProgress(models.Model):
-    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name='lesson_progresses')
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='progresses')
+class DeckProgress(models.Model):
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name='deck_progresses')
+    course_deck = models.ForeignKey(CourseDeck, on_delete=models.CASCADE, related_name='progresses')
     is_completed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(null=True, blank=True)
     last_accessed_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        unique_together = [['enrollment', 'lesson']]
+        unique_together = [['enrollment', 'course_deck']]
         indexes = [
             models.Index(fields=['enrollment', 'is_completed']),
         ]
     
     def __str__(self):
-        return f"{self.enrollment} - {self.lesson.title}"
+        return f"{self.enrollment} - deck {self.course_deck.deck_id}"
 

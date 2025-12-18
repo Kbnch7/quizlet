@@ -1,15 +1,43 @@
 from rest_framework import serializers
-from .models import Enrollment
-from apps.lessons.serializers import LessonListSerializer
+from .models import Enrollment, DeckProgress
+from apps.courses.models import CourseDeck
+from typing import Optional, Dict, Any
+from drf_spectacular.utils import extend_schema_field
+from common.clients.decks_client import decks_client
 
 
-class LessonWithProgressSerializer(LessonListSerializer):
+class DeckWithProgressSerializer(serializers.ModelSerializer):
+    """Колодa курса с данными о прогрессе студента."""
+    deck_info = serializers.SerializerMethodField()
     is_completed = serializers.BooleanField(read_only=True)
     completed_at = serializers.DateTimeField(read_only=True, allow_null=True)
     last_accessed_at = serializers.DateTimeField(read_only=True, allow_null=True)
-    
-    class Meta(LessonListSerializer.Meta):
-        fields = LessonListSerializer.Meta.fields + ['is_completed', 'completed_at', 'last_accessed_at']
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_deck_info(self, obj: CourseDeck) -> Optional[Dict[str, Any]]:
+        if not obj.deck_id:
+            return None
+
+        request = self.context.get('request')
+        if not request:
+            return None
+
+        token = request.META.get('HTTP_AUTHORIZATION', '').replace('Bearer ', '')
+        return decks_client.get_deck_sync(obj.deck_id, token=token)
+
+    class Meta:
+        model = CourseDeck
+        fields = [
+            'id',
+            'course',
+            'deck_id',
+            'order_index',
+            'deck_info',
+            'is_completed',
+            'completed_at',
+            'last_accessed_at',
+        ]
+        read_only_fields = ['id', 'course']
 
 
 class EnrollmentBaseSerializer(serializers.ModelSerializer):
@@ -56,33 +84,33 @@ class EnrollmentUpdateSerializer(EnrollmentBaseSerializer):
 
 class EnrollmentDetailSerializer(EnrollmentBaseSerializer):
     """Сериализатор для детального просмотра enrollment (GET /api/enrollments/{id}/)"""
-    lessons = serializers.SerializerMethodField()
+    decks = serializers.SerializerMethodField()
     
     class Meta(EnrollmentBaseSerializer.Meta):
-        fields = EnrollmentBaseSerializer.Meta.fields + ['lessons']
+        fields = EnrollmentBaseSerializer.Meta.fields + ['decks']
         read_only_fields = ['id', 'course', 'student_id', 'enrolled_at', 'completed_at', 'progress_percent']
     
-    def get_lessons(self, obj):
-        lessons = obj.course.lessons.all().order_by('order_index', 'id')
-        lesson_progresses = {
-            lp.lesson_id: lp 
-            for lp in obj.lesson_progresses.select_related('lesson').all()
+    def get_decks(self, obj):
+        course_decks = obj.course.course_decks.all().order_by('order_index', 'id')
+        deck_progresses = {
+            dp.course_deck_id: dp
+            for dp in obj.deck_progresses.select_related('course_deck').all()
         }
         
         result = []
-        for lesson in lessons:
-            lesson_data = LessonListSerializer(lesson, context=self.context).data
-            progress = lesson_progresses.get(lesson.id)
+        for course_deck in course_decks:
+            deck_data = DeckWithProgressSerializer(course_deck, context=self.context).data
+            progress = deck_progresses.get(course_deck.id)
             
             if progress:
-                lesson_data['is_completed'] = progress.is_completed
-                lesson_data['completed_at'] = progress.completed_at
-                lesson_data['last_accessed_at'] = progress.last_accessed_at
+                deck_data['is_completed'] = progress.is_completed
+                deck_data['completed_at'] = progress.completed_at
+                deck_data['last_accessed_at'] = progress.last_accessed_at
             else:
-                lesson_data['is_completed'] = False
-                lesson_data['completed_at'] = None
-                lesson_data['last_accessed_at'] = None
+                deck_data['is_completed'] = False
+                deck_data['completed_at'] = None
+                deck_data['last_accessed_at'] = None
             
-            result.append(lesson_data)
+            result.append(deck_data)
         
         return result
