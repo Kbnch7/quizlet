@@ -130,7 +130,7 @@ class CourseViewSet(viewsets.ModelViewSet):
                 name="X-User-Ismanager",
                 type=str,
                 location=OpenApiParameter.HEADER,
-                required=True,
+                required=False,
                 description="Is user a manager",
             ),
         ]

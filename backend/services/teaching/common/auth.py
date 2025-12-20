@@ -15,6 +15,9 @@ class UserContext:
     def is_authenticated(self):
         return True
 
+    def __str__(self):
+        return f"UserContext(id={self.id}, is_manager={self.is_manager})"
+
 
 class GatewayAuthentication(BaseAuthentication):
     GATEWAY_SECRET = os.getenv("GATEWAY_SECRET")
@@ -36,10 +39,12 @@ class GatewayAuthentication(BaseAuthentication):
         except ValueError:
             raise AuthenticationFailed("Invalid user id")
 
-        try:
-            is_manager = bool(int(is_manager))
-        except ValueError:
-            raise AuthenticationFailed("Invalid is manager header")
+        if is_manager is None or is_manager == "0":
+            is_manager = False
+        elif is_manager == "1":
+            is_manager = True
+        else:
+            raise AuthenticationFailed("Invalid X-User-Ismanager header")
 
         user = UserContext(id=user_id, is_manager=is_manager)
         return (user, None)
