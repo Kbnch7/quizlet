@@ -1,54 +1,58 @@
-from rest_framework import authentication
+import os
 from dataclasses import dataclass
+
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
+from rest_framework.authentication import BaseAuthentication
+from rest_framework.exceptions import AuthenticationFailed
 
 
 @dataclass
 class UserContext:
     id: int
     is_manager: bool
-    
+
     @property
     def is_authenticated(self):
         return True
 
 
-@dataclass
-class AnonymousUserContext:
-    id: int = 0
-    is_manager: bool = False
-    
-    @property
-    def is_authenticated(self):
-        return False
+class GatewayAuthentication(BaseAuthentication):
+    GATEWAY_SECRET = os.getenv("GATEWAY_SECRET")
 
-
-def get_user_context(request) -> UserContext | AnonymousUserContext:
-    user = getattr(request, 'user', None)
-    if user and isinstance(user, (UserContext, AnonymousUserContext)):
-        return user
-    return AnonymousUserContext()
-
-
-class MockJWTAuthentication(authentication.BaseAuthentication):
     def authenticate(self, request):
-        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-        
-        if not auth_header.startswith('Bearer '):
-            return None
-        
-        token = auth_header.split(' ', 1)[1]
-        
-        if token.endswith('-manager'):
-            user = UserContext(id=2, is_manager=True)
-        else:
-            try:
-                user_id = int(token.split('-')[-1]) if '-' in token else 1
-            except ValueError:
-                user_id = 1
-            user = UserContext(id=user_id, is_manager=False)
-        
-        return (user, None)
-    
-    def authenticate_header(self, request):
-        return 'Bearer'
+        gateway_auth = request.headers.get("X-Gateway-Auth")
 
+        if gateway_auth is None or gateway_auth != self.GATEWAY_SECRET:
+            raise AuthenticationFailed("Invalid Gateway")
+
+        user_id = request.headers.get("X-User-Id")
+        if not user_id:
+            return None
+
+        is_manager = request.headers.get("X-User-Ismanager")
+
+        try:
+            user_id = int(user_id)
+        except ValueError:
+            raise AuthenticationFailed("Invalid user id")
+
+        try:
+            is_manager = bool(int(is_manager))
+        except ValueError:
+            raise AuthenticationFailed("Invalid is manager header")
+
+        user = UserContext(id=user_id, is_manager=is_manager)
+        return (user, None)
+
+
+class GatewayAuthScheme(OpenApiAuthenticationExtension):
+    target_class = "common.auth.GatewayAuthentication"
+    name = "GatewayAuth"
+
+    def get_security_definition(self, auto_schema):
+        return {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-Gateway-Auth",
+            "description": "Internal gateway authentication header",
+        }
