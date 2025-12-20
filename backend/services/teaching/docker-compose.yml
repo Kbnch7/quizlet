@@ -17,6 +17,7 @@ services:
       - SECRET_KEY=${SECRET_KEY:-django-insecure-dev-key}
       - DEBUG=${DEBUG:-True}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,api}
+      - GATEWAY_SECRET=${GATEWAY_SECRET}
       - PYTHONUNBUFFERED=1
     depends_on:
       db:
@@ -48,4 +49,3 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-

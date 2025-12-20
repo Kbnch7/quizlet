@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Enrollment, LessonProgress
+from .models import Enrollment, DeckProgress
 
 
 @admin.register(Enrollment)
@@ -13,8 +13,8 @@ class EnrollmentAdmin(admin.ModelAdmin):
     search_fields = ['student_id']
 
 
-@admin.register(LessonProgress)
-class LessonProgressAdmin(admin.ModelAdmin):
-    list_display = ['id', 'enrollment', 'lesson', 'is_completed', 'last_accessed_at']
+@admin.register(DeckProgress)
+class DeckProgressAdmin(admin.ModelAdmin):
+    list_display = ['id', 'enrollment', 'course_deck', 'is_completed', 'last_accessed_at']
     list_filter = ['is_completed', 'last_accessed_at']
 
