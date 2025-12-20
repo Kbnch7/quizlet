@@ -1,10 +1,10 @@
-from typing import Optional
+import os
 from dataclasses import dataclass
+from typing import Optional
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Header, HTTPException, status
 
-auth_scheme = HTTPBearer(auto_error=False)
+GATEWAY_SECRET = os.getenv("GATEWAY_SECRET")
 
 
 @dataclass
@@ -13,28 +13,21 @@ class UserContext:
     is_manager: bool
 
 
-def _mock_fetch_user_info_from_auth_service(
-    token: str,
-) -> Optional[UserContext]:
-    if not token:
-        return None
-    if token.endswith("-manager"):
-        return UserContext(id=2, is_manager=True)
-    # По умолчанию — обычный пользователь с id 1
-    return UserContext(id=1, is_manager=False)
-
-
 async def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(auth_scheme),
+    x_gateway_auth: str = Header(...),
+    x_user_id: Optional[int] = Header(None),
+    x_user_ismanager: Optional[bool] = Header(None),
 ) -> Optional[UserContext]:
-    """Достает пользователя из заголовка Authorization: Bearer <jwt> (заглушка)."""
-    if credentials is None:
+    if x_gateway_auth != GATEWAY_SECRET:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid gateway"
         )
-    return _mock_fetch_user_info_from_auth_service(credentials.credentials)
+
+    if x_user_id is None:
+        return None
+    if x_user_ismanager is None:
+        x_user_ismanager = False
+    return UserContext(id=x_user_id, is_manager=x_user_ismanager)
 
 
 def is_authorized_for_resource(

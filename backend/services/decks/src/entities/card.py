@@ -1,14 +1,13 @@
 from sqlalchemy import (
     Column,
+    DateTime,
+    ForeignKey,
     Integer,
     String,
     Text,
-    ForeignKey,
-    DateTime,
     func,
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
 
 from . import Base
 
@@ -17,7 +16,9 @@ class Card(Base):
     __tablename__ = "cards"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    deck_id = Column(Integer, ForeignKey("decks.id"), nullable=False)
+    deck_id = Column(
+        Integer, ForeignKey("decks.id", ondelete="CASCADE"), nullable=False
+    )
     front_text = Column(Text, nullable=False)
     front_image_url = Column(String, nullable=True)
     back_text = Column(Text, nullable=False)
