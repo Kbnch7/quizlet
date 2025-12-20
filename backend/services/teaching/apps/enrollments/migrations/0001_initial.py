@@ -24,8 +24,8 @@ class Migration(migrations.Migration):
             ],
             options={
                 'indexes': [
-                    models.Index(fields=['student_id']),
-                    models.Index(fields=['course', 'student_id']),
+                    models.Index(fields=['student_id'], name='enrollment_student_id_idx'),
+                    models.Index(fields=['course', 'student_id'], name='enrol_course_student_id_idx'),
                 ],
                 'unique_together': {('course', 'student_id')},
             },
@@ -42,7 +42,7 @@ class Migration(migrations.Migration):
             ],
             options={
                 'indexes': [
-                    models.Index(fields=['enrollment', 'is_completed']),
+                    models.Index(fields=['enrollment', 'is_completed'], name='deck_prog_enroll_is_compl_idx'),
                 ],
                 'unique_together': {('enrollment', 'course_deck')},
             },

@@ -24,8 +24,8 @@ class Migration(migrations.Migration):
             options={
                 'ordering': ['-created_at'],
                 'indexes': [
-                    models.Index(fields=['teacher_id']),
-                    models.Index(fields=['is_published']),
+                    models.Index(fields=['teacher_id'], name='course_teacher_id_idx'),
+                    models.Index(fields=['is_published'], name='course_is_published_idx'),
                 ],
             },
         ),
@@ -43,7 +43,7 @@ class Migration(migrations.Migration):
                     models.UniqueConstraint(fields=['course', 'deck_id'], name='unique_course_deck'),
                 ],
                 'indexes': [
-                    models.Index(fields=['course', 'order_index']),
+                    models.Index(fields=['course', 'order_index'], name='course_deck_course_idx'),
                 ],
             },
         ),
