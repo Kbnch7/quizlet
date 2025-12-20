@@ -1,12 +1,12 @@
 import asyncio
 import os
-import dotenv
 
+import dotenv
 from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from src.database.core import Base
+
 from src.entities import *
 
 dotenv.load_dotenv()
@@ -19,7 +19,9 @@ async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
 async def init_db():
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(
+            lambda sync_conn: Base.metadata.drop_all(sync_conn, checkfirst=True)
+        )
         await conn.run_sync(Base.metadata.create_all)
 
     async with async_session_maker() as session:
@@ -40,6 +42,7 @@ async def init_db():
             session.add(category)
 
         await session.commit()
+        print("Success")
 
 
 if __name__ == "__main__":
