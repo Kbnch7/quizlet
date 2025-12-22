@@ -3,15 +3,16 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.auth import UserContext, get_current_user
 from src.database.core import get_async_db_session
-from .models import SCategoryResponse, SCategoryCreate, SCategoryUpdate
+
+from .models import SCategoryCreate, SCategoryResponse, SCategoryUpdate
 from .service import (
-    list_categories,
     create_category,
-    update_category,
     delete_category,
+    list_categories,
+    update_category,
 )
-from src.auth import get_current_user, UserContext
 
 router = APIRouter(prefix="/categories", tags=["category"])
 
@@ -24,15 +25,13 @@ async def get_categories(
     return categories
 
 
-@router.post(
-    "/", response_model=SCategoryResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("/", response_model=SCategoryResponse, status_code=status.HTTP_201_CREATED)
 async def admin_create_category(
     payload: SCategoryCreate,
     session: AsyncSession = Depends(get_async_db_session),
     user: Optional[UserContext] = Depends(get_current_user),
 ):
-    if not user or not user.is_manager:
+    if not user.is_manager:
         raise HTTPException(status_code=403, detail="Forbidden")
     cat = await create_category(session, name=payload.name, slug=payload.slug)
     await session.commit()
@@ -46,7 +45,7 @@ async def admin_update_category(
     session: AsyncSession = Depends(get_async_db_session),
     user: Optional[UserContext] = Depends(get_current_user),
 ):
-    if not user or not user.is_manager:
+    if not user.is_manager:
         raise HTTPException(status_code=403, detail="Forbidden")
     cat = await update_category(
         session, category_id=category_id, name=payload.name, slug=payload.slug
@@ -63,7 +62,7 @@ async def admin_delete_category(
     session: AsyncSession = Depends(get_async_db_session),
     user: Optional[UserContext] = Depends(get_current_user),
 ):
-    if not user or not user.is_manager:
+    if not user.is_manager:
         raise HTTPException(status_code=403, detail="Forbidden")
     ok = await delete_category(session, category_id=category_id)
     if not ok:
