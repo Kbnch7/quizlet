@@ -24,7 +24,9 @@ async def get_current_user(
         )
 
     if x_user_id is None:
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
+        )
     if x_user_ismanager is None:
         x_user_ismanager = False
     return UserContext(id=x_user_id, is_manager=x_user_ismanager)

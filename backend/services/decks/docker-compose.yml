@@ -6,7 +6,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=${DB_URL}
+      - DB_URL=${DB_URL}
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
       - MINIO_HOST=${MINIO_HOST}
@@ -67,4 +67,3 @@ services:
 #   postgres_data:
 #   minio-storage:
 #   minio-config:
-

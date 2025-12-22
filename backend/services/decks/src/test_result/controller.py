@@ -2,22 +2,23 @@ from typing import List, Optional
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     HTTPException,
-    BackgroundTasks,
     Query,
     Response,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
+from src.auth import UserContext, get_current_user, is_authorized_for_resource
+from src.database.core import async_session_maker, get_async_db_session
+from src.deck_stats.service import update_deck_stats
+from src.entities import Card, Deck, TestResult
 
 from .models import STestResultCreate, STestResultResponse
 from .service import create_test_result, list_test_results
-from src.database.core import get_async_db_session, async_session_maker
-from src.entities import Deck, Card, TestResult
-from src.auth import get_current_user, UserContext, is_authorized_for_resource
-from src.deck_stats.service import update_deck_stats
 
 router = APIRouter(prefix="/deck", tags=["test_result"])
 
@@ -66,9 +67,7 @@ async def create_result(
     card_ids = {cr.card_id for cr in payload.card_results}
     if card_ids:
         cards_query = await session.execute(
-            select(Card.id).where(
-                (Card.id.in_(card_ids)) & (Card.deck_id == deck_id)
-            )
+            select(Card.id).where((Card.id.in_(card_ids)) & (Card.deck_id == deck_id))
         )
         valid_ids = set(cards_query.scalars().all())
         invalid = card_ids - valid_ids
@@ -81,9 +80,7 @@ async def create_result(
                 },
             )
 
-    tr = await create_test_result(
-        session, deck_id=deck_id, **payload.model_dump()
-    )
+    tr = await create_test_result(session, deck_id=deck_id, **payload.model_dump())
     await session.commit()
     background_tasks.add_task(_update_stats_background, tr.id, deck_id)
     await session.refresh(tr, ["card_results"])
@@ -102,9 +99,6 @@ async def list_results(
     session: AsyncSession = Depends(get_async_db_session),
     user: Optional[UserContext] = Depends(get_current_user),
 ):
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthenticated")
-
     deck = (
         (await session.execute(select(Deck).where(Deck.id == deck_id)))
         .scalars()

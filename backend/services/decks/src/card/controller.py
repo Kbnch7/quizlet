@@ -1,23 +1,25 @@
 import os
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Body
+from uuid import uuid4
+
+from fastapi import APIRouter, Body, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import src.card.service as service
+from src.auth import UserContext, get_current_user, is_authorized_for_resource
 from src.database.core import get_async_db_session
+from src.entities import Deck
+from src.utils.storage import BUCKET_CARDS, get_storage_client
+
 from .models import (
-    SCardCreate,
-    SCardUpdate,
-    SCardResponse,
     SCardBulkItem,
+    SCardCreate,
+    SCardResponse,
+    SCardUpdate,
     SPresignUploadRequest,
     SPresignUploadResponse,
 )
-from src.auth import get_current_user, UserContext, is_authorized_for_resource
-from src.entities import Deck
-from sqlalchemy import select
-from src.utils.storage import get_storage_client, BUCKET_CARDS
-from uuid import uuid4
 
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "miniouser")
@@ -38,13 +40,9 @@ def _presign_card_images(card):
     bucket = BUCKET_CARDS
     signer = _signer_client()
     if card.front_image_url and not card.front_image_url.startswith("temp/"):
-        card.front_image_url = signer.presigned_get_url(
-            bucket, card.front_image_url
-        )
+        card.front_image_url = signer.presigned_get_url(bucket, card.front_image_url)
     if card.back_image_url and not card.back_image_url.startswith("temp/"):
-        card.back_image_url = signer.presigned_get_url(
-            bucket, card.back_image_url
-        )
+        card.back_image_url = signer.presigned_get_url(bucket, card.back_image_url)
 
 
 @router.post("/{deck_id}/cards", response_model=SCardResponse)
@@ -63,9 +61,7 @@ async def create_card(
         raise HTTPException(status_code=404, detail="Deck not found")
     if not is_authorized_for_resource(deck.owner_id, user):
         raise HTTPException(status_code=403, detail="Forbidden")
-    card = await service.create_card(
-        session, deck_id=deck_id, **payload.model_dump()
-    )
+    card = await service.create_card(session, deck_id=deck_id, **payload.model_dump())
     await session.commit()
     _presign_card_images(card)
     return card
@@ -127,9 +123,7 @@ async def bulk_cards(
                     {
                         "front_text": "Q1",
                         "back_text": "A1",
-                        "fron_image_url": (
-                            "temp/{user_id}/uploads/{uuid}.{ext}"
-                        ),
+                        "fron_image_url": ("temp/{user_id}/uploads/{uuid}.{ext}"),
                         "order_index": 0,
                     }
                 ],
@@ -172,9 +166,6 @@ async def presign_card_image(
     payload: SPresignUploadRequest,
     user: Optional[UserContext] = Depends(get_current_user),
 ):
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthenticated")
-
     client = _signer_client()
     client.ensure_bucket(MINIO_BUCKET_CARDS)
 

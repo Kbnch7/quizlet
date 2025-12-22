@@ -4,16 +4,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import src.deck.service as deck_service
+from src.auth import UserContext, get_current_user, is_authorized_for_resource
 from src.database.core import get_async_db_session
-from .models import (
-    SDeckCreate,
-    SDeckUpdate,
-    SDeckResponse,
-    SDeckDetailedResponse,
-)
-from src.auth import get_current_user, UserContext, is_authorized_for_resource
 from src.deck_stats.service import get_deck_stats
 from src.utils.storage import BUCKET_CARDS, get_storage_client
+
+from .models import (
+    SDeckCreate,
+    SDeckDetailedResponse,
+    SDeckResponse,
+    SDeckUpdate,
+)
 
 router = APIRouter(prefix="/deck", tags=["deck"])
 
@@ -28,15 +29,11 @@ def _presign_deck_cards(deck):
     signer = _signer_client()
     if getattr(deck, "cards", None):
         for card in deck.cards:
-            if card.front_image_url and not card.front_image_url.startswith(
-                "temp/"
-            ):
+            if card.front_image_url and not card.front_image_url.startswith("temp/"):
                 card.front_image_url = signer.presigned_get_url(
                     bucket, card.front_image_url
                 )
-            if card.back_image_url and not card.back_image_url.startswith(
-                "temp/"
-            ):
+            if card.back_image_url and not card.back_image_url.startswith("temp/"):
                 card.back_image_url = signer.presigned_get_url(
                     bucket, card.back_image_url
                 )
@@ -54,10 +51,7 @@ async def get_decks(
     cursor: Optional[int] = Query(default=None),
     limit: int = Query(default=20, le=100),
     session: AsyncSession = Depends(get_async_db_session),
-    user: Optional[UserContext] = Depends(get_current_user),
 ):
-    if user is None:
-        raise HTTPException(status_code=401, detail="Unauthenticated")
     decks, next_cursor = await deck_service.list_decks(
         session,
         author=author,
@@ -77,8 +71,6 @@ async def create_deck(
     session: AsyncSession = Depends(get_async_db_session),
     user: Optional[UserContext] = Depends(get_current_user),
 ):
-    if user is None:
-        raise HTTPException(status_code=401, detail="Unauthenticated")
     if payload.owner_id is not None:
         if not user.is_manager:
             raise HTTPException(status_code=403, detail="Forbidden")
@@ -102,7 +94,6 @@ async def create_deck(
 async def get_deck(
     deck_id: int,
     session: AsyncSession = Depends(get_async_db_session),
-    user: Optional[UserContext] = Depends(get_current_user),
 ):
     deck = await deck_service.get_deck(session, deck_id)
     if deck is None:
