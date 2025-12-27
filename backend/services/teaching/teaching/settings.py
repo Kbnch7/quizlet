@@ -95,8 +95,8 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
-DECKS_SERVICE_URL = os.getenv("DECKS_SERVICE_URL", "http://localhost:8000")
-USERS_SERVICE_URL = os.getenv("USERS_SERVICE_URL", "http://localhost:8001")
+DECKS_SERVICE_URL = os.getenv("DECKS_SERVICE_URL")
+USERS_SERVICE_URL = os.getenv("USERS_SERVICE_URL")
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"

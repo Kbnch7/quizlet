@@ -16,7 +16,7 @@ from .models import (
     SDeckUpdate,
 )
 
-router = APIRouter(prefix="/deck", tags=["deck"])
+router = APIRouter(prefix="/api/decks", tags=["deck"])
 
 
 def _signer_client():

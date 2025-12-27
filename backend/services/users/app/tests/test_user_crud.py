@@ -1,16 +1,16 @@
 # tests/test_user_crud.py
 import pytest
 from sqlalchemy import select
-from fastapi import HTTPException, status
 
 # подстрой пути под твой пакет
 from ..crud import UserCRUD
 from ..schemas import user_schemas
-from . import models
-from ..utils.security import verify_password
 from ..utils.exceptions import UserAlreadyExistsException
+from ..utils.security import verify_password
+from . import models
 
 pytestmark = pytest.mark.asyncio
+
 
 async def test_create_user_ok(session, user_payload_factory):
     payload = user_schemas.UserCreate(**user_payload_factory(1))
@@ -20,15 +20,18 @@ async def test_create_user_ok(session, user_payload_factory):
     assert user.password_hash != payload.password
     assert verify_password(payload.password, user.password_hash)
 
+
 async def test_create_user_conflict_email(session, user_payload_factory):
     # первый — ок
     payload1 = user_schemas.UserCreate(**user_payload_factory(2))
     await UserCRUD.create_user(session, payload1)
 
     # второй с тем же email — 409
-    payload2 = user_schemas.UserCreate(**user_payload_factory(3, email=payload1.email))
+    payload2 = user_schemas.UserCreate(
+        **user_payload_factory(3, email=payload1.email))
     with pytest.raises(UserAlreadyExistsException) as exc:
         await UserCRUD.create_user(session, payload2)
+
 
 async def test_get_user_by_id_only_active(session, user_payload_factory):
     # создаём
@@ -47,9 +50,14 @@ async def test_get_user_by_id_only_active(session, user_payload_factory):
     found2 = await UserCRUD.get_user_by_id(session, user.id)
     assert found2 is None
 
+
 async def test_list_users_filters_only_active(session, user_payload_factory):
-    u1 = await UserCRUD.create_user(session, user_schemas.UserCreate(**user_payload_factory(5)))
-    u2 = await UserCRUD.create_user(session, user_schemas.UserCreate(**user_payload_factory(6)))
+    u1 = await UserCRUD.create_user(
+        session, user_schemas.UserCreate(**user_payload_factory(5))
+    )
+    u2 = await UserCRUD.create_user(
+        session, user_schemas.UserCreate(**user_payload_factory(6))
+    )
     # soft-delete второго
     await UserCRUD.delete_user(session, u2.id)
 
@@ -58,10 +66,10 @@ async def test_list_users_filters_only_active(session, user_payload_factory):
     assert u1.id in ids
     assert u2.id not in ids  # удалённый не должен вернуться
 
+
 async def test_update_user_partial_fields(session, user_payload_factory):
     # создаём
     payload = user_schemas.UserCreate(**user_payload_factory(7))
-    print(payload.password)
     user = await UserCRUD.create_user(session, payload)
 
     # частичное обновление: имя и почта
@@ -72,6 +80,7 @@ async def test_update_user_partial_fields(session, user_payload_factory):
     assert updated.email == "alice@example.com"
     # пароль не меняли — должен верифицироваться старый
     # assert verify_password("strongpass7!", updated.password_hash)
+
 
 async def test_update_user_password_hashing(session, user_payload_factory):
     payload = user_schemas.UserCreate(**user_payload_factory(8))
@@ -84,17 +93,27 @@ async def test_update_user_password_hashing(session, user_payload_factory):
     # старый уже не должен подходить
     assert not verify_password(payload.password, updated.password_hash)
 
+
 async def test_update_user_conflict_email(session, user_payload_factory):
     # два пользователя
-    u1 = await UserCRUD.create_user(session, user_schemas.UserCreate(**user_payload_factory(9)))
-    u2 = await UserCRUD.create_user(session, user_schemas.UserCreate(**user_payload_factory(10)))
+    u1 = await UserCRUD.create_user(
+        session, user_schemas.UserCreate(**user_payload_factory(9))
+    )
+    u2 = await UserCRUD.create_user(
+        session, user_schemas.UserCreate(**user_payload_factory(10))
+    )
 
     # пытаемся изменить email второго на email первого → 409
     with pytest.raises(UserAlreadyExistsException) as exc:
-        await UserCRUD.update_user(session, u2.id, user_schemas.UserUpdate(email=u1.email))
+        await UserCRUD.update_user(
+            session, u2.id, user_schemas.UserUpdate(email=u1.email)
+        )
+
 
 async def test_delete_user_soft(session, user_payload_factory):
-    user = await UserCRUD.create_user(session, user_schemas.UserCreate(**user_payload_factory(11)))
+    user = await UserCRUD.create_user(
+        session, user_schemas.UserCreate(**user_payload_factory(11))
+    )
     await UserCRUD.delete_user(session, user.id)
 
     # запись осталась в БД, но is_active = False

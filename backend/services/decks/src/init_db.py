@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import (
 from src.entities import *
 
 dotenv.load_dotenv()
-DB_URL = os.getenv("DATABASE_URL")
+DB_URL = os.getenv("DB_URL")
 
 engine = create_async_engine(DB_URL)
 
@@ -20,7 +20,8 @@ async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(
-            lambda sync_conn: Base.metadata.drop_all(sync_conn, checkfirst=True)
+            lambda sync_conn: Base.metadata.drop_all(
+                sync_conn, checkfirst=True)
         )
         await conn.run_sync(Base.metadata.create_all)
 

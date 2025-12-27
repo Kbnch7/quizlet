@@ -87,7 +87,6 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         x_user_id: Optional[int] = Header(None),
         x_user_ismanager: Optional[bool] = Header(None),
     ) -> Optional[UserContext]:
-        print(x_gateway_auth)
         if x_gateway_auth != GATEWAY_SECRET:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Invalid gateway"
@@ -123,7 +122,8 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         patch(
             "src.card.controller.get_storage_client", return_value=mock_storage_client
         ),
-        patch("src.card.service.get_storage_client", return_value=mock_storage_client),
+        patch("src.card.service.get_storage_client",
+              return_value=mock_storage_client),
     ):
         async with AsyncClient(
             transport=ASGITransport(app=app),
@@ -193,7 +193,8 @@ async def test_deck(
 
     # Добавляем категорию
     await db_session.execute(
-        insert(deck_categories).values(deck_id=deck.id, category_id=test_category.id)
+        insert(deck_categories).values(
+            deck_id=deck.id, category_id=test_category.id)
     )
 
     await db_session.commit()
