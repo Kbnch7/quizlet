@@ -22,7 +22,7 @@ from src.learn.service import (
     update_session_progress,
 )
 
-router = APIRouter(prefix="/learn", tags=["learn"])
+router = APIRouter(prefix="/api/learn", tags=["learn"])
 
 
 def _session_to_response(learn_session) -> SLearnSessionResponse:
@@ -94,7 +94,8 @@ async def get_next_card_endpoint(
     if not learn_session:
         raise HTTPException(status_code=404, detail="Learn session not found")
     if learn_session.status != "active":
-        raise HTTPException(status_code=400, detail="Learn session is not active")
+        raise HTTPException(
+            status_code=400, detail="Learn session is not active")
 
     card_id = await get_next_card(session, learn_session, user.id)
     await update_session_progress(session, learn_session, user.id)
@@ -125,7 +126,8 @@ async def submit_answer(
     if not learn_session:
         raise HTTPException(status_code=404, detail="Learn session not found")
     if learn_session.status != "active":
-        raise HTTPException(status_code=400, detail="Learn session is not active")
+        raise HTTPException(
+            status_code=400, detail="Learn session is not active")
 
     await record_answer(
         session,

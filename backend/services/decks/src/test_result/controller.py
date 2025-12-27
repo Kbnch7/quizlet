@@ -20,7 +20,7 @@ from src.entities import Card, Deck, TestResult
 from .models import STestResultCreate, STestResultResponse
 from .service import create_test_result, list_test_results
 
-router = APIRouter(prefix="/deck", tags=["test_result"])
+router = APIRouter(prefix="/api/deck", tags=["test_result"])
 
 
 async def _update_stats_background(test_result_id: int, deck_id: int) -> None:
@@ -67,7 +67,8 @@ async def create_result(
     card_ids = {cr.card_id for cr in payload.card_results}
     if card_ids:
         cards_query = await session.execute(
-            select(Card.id).where((Card.id.in_(card_ids)) & (Card.deck_id == deck_id))
+            select(Card.id).where((Card.id.in_(card_ids))
+                                  & (Card.deck_id == deck_id))
         )
         valid_ids = set(cards_query.scalars().all())
         invalid = card_ids - valid_ids

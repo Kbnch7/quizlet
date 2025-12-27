@@ -1,9 +1,9 @@
-from minio import Minio
-from minio.error import S3Error
-from minio.commonconfig import CopySource
-
-from urllib.parse import urlparse
 from datetime import timedelta
+from urllib.parse import urlparse
+
+from minio import Minio
+from minio.commonconfig import CopySource
+from minio.error import S3Error
 
 
 class MinioClient:
@@ -58,9 +58,7 @@ class MinioClient:
         except S3Error as e:
             raise RuntimeError(f"Error ensuring bucket: {e}")
 
-    def copy_object(
-        self, bucket_name: str, src_object: str, dst_object: str
-    ) -> None:
+    def copy_object(self, bucket_name: str, src_object: str, dst_object: str) -> None:
         try:
             self.client.copy_object(
                 bucket_name, dst_object, CopySource(bucket_name, src_object)
@@ -85,5 +83,5 @@ def extract_object_key_from_url(url: str, bucket_name: str) -> str:
     # Common patterns: /bucket/key or just /key depending on gateway
     path = parsed.path.lstrip("/")
     if path.startswith(bucket_name + "/"):
-        return path[len(bucket_name) + 1 :]
+        return path[len(bucket_name) + 1:]
     return path

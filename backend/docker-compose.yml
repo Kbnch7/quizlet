@@ -1,14 +1,15 @@
 services:
-  postgres:
+  postgres-users:
     image: postgres:13.3
     environment:
       POSTGRES_DB: "users_service"
       POSTGRES_USER: "admin"
       POSTGRES_PASSWORD: "123"
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # - postgres_data:/var/lib/postgresql/data
+      - ./var/users_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin -d users_service"]
       interval: 5s
@@ -20,9 +21,9 @@ services:
     image: redis:7
     container_name: redis
     ports:
-      - "6379:6379"
+      - "6378:6379"
     volumes:
-      - redis_data:/data
+      - ./var/redis_data:/data
     command: ["redis-server", "--appendonly", "yes"]
     restart: unless-stopped
 
@@ -31,19 +32,25 @@ services:
       context: ./services/users
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql://admin:123@postgres:5432/users_service
+      DATABASE_URL: postgresql+asyncpg://admin:123@postgres-users:5432/users_service
+      PYTHONUNBUFFERED: 1
     ports:
-      - "8000:8000"
+      - "8004:8000"
     depends_on:
-      postgres:
+      postgres-users:
         condition: service_healthy
     volumes:
       - ./services/users/app:/app/app
-    command: >
-      sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    # command: >
+    #   sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8000"
     healthcheck:
-      # без curl/wget
-      test: ["CMD", "python", "-c", "import socket,sys; s=socket.socket(); s.settimeout(2); s.connect((\"127.0.0.1\",8000)); s.close()"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          'import socket,sys; s=socket.socket(); s.settimeout(2); s.connect(("127.0.0.1",8000)); s.close()',
+        ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -55,12 +62,16 @@ services:
       context: ./services/auth
       dockerfile: Dockerfile
     environment:
-      USER_SERVICE_URL: http://users:8000
+      ALGORITHM: ${ALGORITHM}
+      SECRET_KEY: ${SECRET_KEY}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS}
+      USERS_SERVICE_URL: ${USERS_SERVICE_URL}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: 0
     ports:
-      - "8081:8081"
+      - "8005:8000"
     depends_on:
       users:
         condition: service_healthy
@@ -69,13 +80,156 @@ services:
     # command: >
     #   sh -c "python -m app.main --host 0.0.0.0 --port 8081"
     healthcheck:
-      test: ["CMD", "python", "-c", "import socket,sys; s=socket.socket(); s.settimeout(2); s.connect((\"127.0.0.1\",8081)); s.close()"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          'import socket,sys; s=socket.socket(); s.settimeout(2); s.connect(("127.0.0.1",8000)); s.close()',
+        ]
       interval: 5s
       timeout: 3s
       retries: 20
       start_period: 10s
     restart: unless-stopped
 
-volumes:
-  postgres_data:
-  redis_data:
+  decks:
+    build:
+      context: ./services/decks/
+      # dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - DB_URL=${DECKS_DB_URL}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_HOST=${MINIO_HOST}
+      - MINIO_SECURE=${MINIO_SECURE}
+      - MINIO_BUCKET_CARDS=${MINIO_BUCKET_CARDS}
+      - GATEWAY_SECRET=${GATEWAY_SECRET}
+    depends_on:
+      - postgres-decks
+      - minio
+    volumes:
+      - ./services/decks/src:/app/src
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+
+  postgres-decks:
+    image: postgres:17
+    environment:
+      - POSTGRES_DB=${DECKS_POSTGRES_DB}
+      - POSTGRES_USER=${DECKS_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${DECKS_POSTGRES_PASSWORD}
+    volumes:
+      # - postgres_data:/var/lib/postgresql/data
+      - ./var/decks_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+
+  minio:
+    image: minio/minio
+    restart: unless-stopped
+    volumes:
+      # - minio-storage:/data
+      # - minio-config:/root/.minio
+      - ./var/minio-storage:/data
+      - ./var/minio-config:/root/.minio
+      - ./config/minio/lifecycle.json:/lifecycle.json:ro
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
+    entrypoint: /bin/sh
+    command: -c "
+      minio server /data --console-address ':9001' & \
+      until curl -f http://127.0.0.1:9000/minio/health/live; do \
+      echo waiting for minio...; sleep 2; \
+      done; \
+      mc alias set local http://127.0.0.1:9000 miniouser miniopassword; \
+      mc ilm import local/cards < /lifecycle.json; \
+      wait"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  teaching:
+    build:
+      context: ./services/teaching/
+      # dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      - DATABASE_URL=postgresql://${TEACHING_POSTGRES_USER}:${TEACHING_POSTGRES_PASSWORD}@db:5432/${TEACHING_POSTGRES_DB}
+      - POSTGRES_DB=${TEACHING_POSTGRES_DB:-teaching_db}
+      - POSTGRES_USER=${TEACHING_POSTGRES_USER:-user}
+      - POSTGRES_PASSWORD=${TEACHING_POSTGRES_PASSWORD:-password}
+      - DB_HOST=teaching-postgres
+      - DB_PORT=5432
+      - DECKS_SERVICE_URL=${DECKS_SERVICE_URL}
+      - USERS_SERVICE_URL=${USERS_SERVICE_URL}
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-dev-key}
+      - DEBUG=${DEBUG:-True}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,api}
+      - GATEWAY_SECRET=${GATEWAY_SECRET}
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      teaching-postgres:
+        condition: service_healthy
+    volumes:
+      - ./services/teaching/apps:/app/apps
+      - ./services/teaching/teaching:/app/teaching
+      - ./services/teaching/common:/app/common
+      - ./services/teaching/templates:/app/templates
+      - ./services/teaching/manage.py:/app/manage.py
+    command: >
+      sh -c "python manage.py makemigrations &&
+             python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput || true &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  teaching-postgres:
+    image: postgres:17
+    environment:
+      - POSTGRES_DB=${TEACHING_POSTGRES_DB:-teaching_db}
+      - POSTGRES_USER=${TEACHING_POSTGRES_USER:-user}
+      - POSTGRES_PASSWORD=${TEACHING_POSTGRES_PASSWORD:-password}
+    volumes:
+      - ./var/teaching_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5436:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./gateway/src:/app/src
+    environment:
+      ALGORITHM: ${ALGORITHM}
+      SECRET_KEY: ${SECRET_KEY}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      DECKS_SERVICE_URL: ${DECKS_SERVICE_URL}
+      USERS_SERVICE_URL: ${USERS_SERVICE_URL}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
+      TEACHING_SERVICE_URL: ${TEACHING_SERVICE_URL}
+      GATEWAY_SECRET: ${GATEWAY_SECRET}
+    depends_on:
+      - auth
+      - users
+      - decks
+      - teaching
+# volumes:
+#   postgres_data:
+#   redis_data:

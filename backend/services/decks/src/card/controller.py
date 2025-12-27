@@ -28,7 +28,7 @@ MINIO_SECURE = os.getenv("MINIO_SECURE", "false").lower() == "true"
 MINIO_BUCKET_CARDS = os.getenv("MINIO_BUCKET_CARDS", "cards")
 
 
-router = APIRouter(prefix="/deck", tags=["card"])
+router = APIRouter(prefix="/api/deck", tags=["card"])
 
 
 def _signer_client():
@@ -40,9 +40,11 @@ def _presign_card_images(card):
     bucket = BUCKET_CARDS
     signer = _signer_client()
     if card.front_image_url and not card.front_image_url.startswith("temp/"):
-        card.front_image_url = signer.presigned_get_url(bucket, card.front_image_url)
+        card.front_image_url = signer.presigned_get_url(
+            bucket, card.front_image_url)
     if card.back_image_url and not card.back_image_url.startswith("temp/"):
-        card.back_image_url = signer.presigned_get_url(bucket, card.back_image_url)
+        card.back_image_url = signer.presigned_get_url(
+            bucket, card.back_image_url)
 
 
 @router.post("/{deck_id}/cards", response_model=SCardResponse)

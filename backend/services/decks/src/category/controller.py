@@ -14,7 +14,7 @@ from .service import (
     update_category,
 )
 
-router = APIRouter(prefix="/categories", tags=["category"])
+router = APIRouter(prefix="/api/categories", tags=["category"])
 
 
 @router.get("/", response_model=List[SCategoryResponse])

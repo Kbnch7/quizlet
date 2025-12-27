@@ -1,5 +1,4 @@
-from typing import Optional, List
-from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
@@ -24,15 +23,17 @@ class UserCreate(BaseModel):
     def check_password(cls, value: str):
         if len(value) < 8:
             raise ValueError("Password must be at least 8 characters long.")
-        if " " in value:    
+        if " " in value:
             raise ValueError("Field can not contain spaces.")
         return value.strip()
+
 
 class UserBaseInfo(BaseModel):
     id: int
     name: str
     surname: str
     email: EmailStr
+    is_manager: bool
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -42,6 +43,7 @@ class UserBaseInfo(BaseModel):
         if not value:
             raise ValueError("Field can not be empty.")
         return value.strip().capitalize()
+
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -68,6 +70,7 @@ class UserUpdate(BaseModel):
         if " " in value:
             raise ValueError("Password cannot contain spaces.")
         return value.strip()
+
 
 class UserLogin(BaseModel):
     email: EmailStr
