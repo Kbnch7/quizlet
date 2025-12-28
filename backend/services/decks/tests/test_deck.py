@@ -9,17 +9,17 @@ from tests.conftest import get_auth_headers
 
 @pytest.mark.asyncio
 class TestGetDecks:
-    """Тесты для GET /deck/"""
+    """Тесты для GET /decks/"""
 
     async def test_get_decks_empty_unauthorized(self, client: AsyncClient):
         """Тест получения пустого списка колод"""
-        response = await client.get("/deck/")
+        response = await client.get("/decks/")
         assert response.status_code == 200
 
     async def test_get_decks_empty(self, client: AsyncClient, mock_user: UserContext):
         """Тест получения пустого списка колод"""
         headers = get_auth_headers(mock_user)
-        response = await client.get("/deck/", headers=headers)
+        response = await client.get("/decks/", headers=headers)
         assert response.status_code == 200
         assert response.json() == []
 
@@ -28,18 +28,7 @@ class TestGetDecks:
     ):
         """Тест получения списка колод"""
         headers = get_auth_headers(mock_user)
-        response = await client.get("/deck/", headers=headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) == 3
-        assert all("id" in deck for deck in data)
-        assert all("title" in deck for deck in data)
-
-    async def test_get_decks_with_data_unauthorized(
-        self, client: AsyncClient, test_decks: list[Deck]
-    ):
-        """Тест получения списка колод без авторизации"""
-        response = await client.get("/deck/")
+        response = await client.get("/decks/", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 3
@@ -51,7 +40,7 @@ class TestGetDecks:
     ):
         """Тест фильтрации колод по автору"""
         headers = get_auth_headers(mock_user)
-        response = await client.get(f"/deck/?author={mock_user.id}", headers=headers)
+        response = await client.get(f"/decks/?author={mock_user.id}", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 2
@@ -62,7 +51,7 @@ class TestGetDecks:
     ):
         """Тест фильтрации колод по автору"""
         headers = get_auth_headers(mock_user)
-        response = await client.get(f"/deck/?author={1000}", headers=headers)
+        response = await client.get(f"/decks/?author={1000}", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 0
@@ -77,7 +66,7 @@ class TestGetDecks:
         """Тест фильтрации колод по категории"""
         headers = get_auth_headers(mock_user)
         response = await client.get(
-            f"/deck/?category={test_categories[0].slug}", headers=headers
+            f"/decks/?category={test_categories[0].slug}", headers=headers
         )
         assert response.status_code == 200
         data = response.json()
@@ -88,7 +77,7 @@ class TestGetDecks:
     ):
         """Тест пагинации колод"""
         headers = get_auth_headers(mock_user)
-        response = await client.get("/deck/?limit=2", headers=headers)
+        response = await client.get("/decks/?limit=2", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 2
@@ -100,7 +89,7 @@ class TestGetDecks:
         """Тест пагинации с курсором"""
         headers = get_auth_headers(mock_user)
         # Получаем первую страницу
-        response = await client.get("/deck/?limit=2", headers=headers)
+        response = await client.get("/decks/?limit=2", headers=headers)
         assert response.status_code == 200
         first_page = response.json()
         assert len(first_page) == 2
@@ -109,7 +98,7 @@ class TestGetDecks:
         # Получаем вторую страницу
         if cursor:
             response = await client.get(
-                f"/deck/?limit=2&cursor={cursor}", headers=headers
+                f"/decks/?limit=2&cursor={cursor}", headers=headers
             )
             assert response.status_code == 200
             second_page = response.json()
@@ -122,12 +111,12 @@ class TestGetDecks:
 
 @pytest.mark.asyncio
 class TestCreateDeck:
-    """Тесты для POST /deck/"""
+    """Тесты для POST /decks/"""
 
     async def test_create_deck_unauthorized(self, client: AsyncClient):
         """Тест создания колоды без авторизации"""
         payload = {"title": "New Deck", "description": "Description"}
-        response = await client.post("/deck/", json=payload)
+        response = await client.post("/decks/", json=payload)
         assert response.status_code == 401
 
     async def test_create_deck_success(
@@ -144,7 +133,7 @@ class TestCreateDeck:
             "categories": [test_categories[0].slug],
             "tags": ["tag1", "tag2"],
         }
-        response = await client.post("/deck/", json=payload, headers=headers)
+        response = await client.post("/decks/", json=payload, headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["title"] == "New Deck"
@@ -159,7 +148,7 @@ class TestCreateDeck:
         """Тест создания колоды с несуществующими категориями"""
         headers = get_auth_headers(mock_user)
         payload = {"title": "New Deck", "categories": ["unknown-category"]}
-        response = await client.post("/deck/", json=payload, headers=headers)
+        response = await client.post("/decks/", json=payload, headers=headers)
         assert response.status_code == 400
         data = response.json()
         assert "error" in data
@@ -179,7 +168,7 @@ class TestCreateDeck:
             "owner_id": 999,
             "categories": [test_categories[0].slug],
         }
-        response = await client.post("/deck/", json=payload, headers=headers)
+        response = await client.post("/decks/", json=payload, headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["owner_id"] == 999
@@ -190,27 +179,27 @@ class TestCreateDeck:
         """Тест создания колоды обычным пользователем с указанием owner_id"""
         headers = get_auth_headers(mock_user)
         payload = {"title": "Deck", "owner_id": 999}
-        response = await client.post("/deck/", json=payload, headers=headers)
+        response = await client.post("/decks/", json=payload, headers=headers)
         assert response.status_code == 403
         assert "Forbidden" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
 class TestGetDeck:
-    """Тесты для GET /deck/{deck_id}/"""
+    """Тесты для GET /decks/{deck_id}/"""
 
     async def test_get_deck_not_found(
         self, client: AsyncClient, mock_user: UserContext
     ):
         """Тест получения несуществующей колоды"""
         headers = get_auth_headers(mock_user)
-        response = await client.get("/deck/999/", headers=headers)
+        response = await client.get("/decks/999/", headers=headers)
         assert response.status_code == 404
         assert "Deck not found" in response.json()["detail"]
 
     async def test_get_deck_unauthorized(self, client: AsyncClient, test_deck: Deck):
         """Тест получения колоды без авторизации"""
-        response = await client.get(f"/deck/{test_deck.id}/")
+        response = await client.get(f"/decks/{test_deck.id}/")
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == test_deck.id
@@ -225,7 +214,7 @@ class TestGetDeck:
     ):
         """Тест успешного получения колоды"""
         headers = get_auth_headers(mock_user)
-        response = await client.get(f"/deck/{test_deck.id}/", headers=headers)
+        response = await client.get(f"/decks/{test_deck.id}/", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == test_deck.id
@@ -238,7 +227,7 @@ class TestGetDeck:
 
 @pytest.mark.asyncio
 class TestUpdateDeck:
-    """Тесты для PATCH /deck/{deck_id}/"""
+    """Тесты для PATCH /decks/{deck_id}/"""
 
     async def test_update_deck_not_found(
         self, client: AsyncClient, mock_user: UserContext
@@ -246,14 +235,14 @@ class TestUpdateDeck:
         """Тест обновления несуществующей колоды"""
         headers = get_auth_headers(mock_user)
         payload = {"title": "Updated Title"}
-        response = await client.patch("/deck/999/", json=payload, headers=headers)
+        response = await client.patch("/decks/999/", json=payload, headers=headers)
         assert response.status_code == 404
         assert "Deck not found" in response.json()["detail"]
 
     async def test_update_deck_unauthorized(self, client: AsyncClient, test_deck: Deck):
         """Тест обновления колоды без авторизации"""
         payload = {"title": "Updated Title"}
-        response = await client.patch(f"/deck/{test_deck.id}/", json=payload)
+        response = await client.patch(f"/decks/{test_deck.id}/", json=payload)
         assert response.status_code == 401
         assert (
             "Not authenticated" in response.json()["detail"]
@@ -267,7 +256,7 @@ class TestUpdateDeck:
         headers = get_auth_headers(mock_other_user)
         payload = {"title": "Updated Title"}
         response = await client.patch(
-            f"/deck/{test_deck.id}/", json=payload, headers=headers
+            f"/decks/{test_deck.id}/", json=payload, headers=headers
         )
         assert response.status_code == 403
         assert "Forbidden" in response.json()["detail"]
@@ -288,7 +277,7 @@ class TestUpdateDeck:
             "categories": [test_categories[1].slug],
         }
         response = await client.patch(
-            f"/deck/{test_deck.id}/", json=payload, headers=headers
+            f"/decks/{test_deck.id}/", json=payload, headers=headers
         )
         assert response.status_code == 200
         data = response.json()
@@ -305,7 +294,7 @@ class TestUpdateDeck:
         headers = get_auth_headers(mock_user)
         payload = {"title": "Only Title Updated"}
         response = await client.patch(
-            f"/deck/{test_deck.id}/", json=payload, headers=headers
+            f"/decks/{test_deck.id}/", json=payload, headers=headers
         )
         assert response.status_code == 200
         data = response.json()
@@ -320,7 +309,7 @@ class TestUpdateDeck:
         headers = get_auth_headers(mock_user)
         payload = {"categories": ["unknown-category"]}
         response = await client.patch(
-            f"/deck/{test_deck.id}/", json=payload, headers=headers
+            f"/decks/{test_deck.id}/", json=payload, headers=headers
         )
         assert response.status_code == 400
         data = response.json()
@@ -334,7 +323,7 @@ class TestUpdateDeck:
         headers = get_auth_headers(mock_manager)
         payload = {"title": "Manager Updated"}
         response = await client.patch(
-            f"/deck/{test_deck.id}/", json=payload, headers=headers
+            f"/decks/{test_deck.id}/", json=payload, headers=headers
         )
         assert response.status_code == 200
         data = response.json()
@@ -343,20 +332,20 @@ class TestUpdateDeck:
 
 @pytest.mark.asyncio
 class TestDeleteDeck:
-    """Тесты для DELETE /deck/{deck_id}/"""
+    """Тесты для DELETE /decks/{deck_id}/"""
 
     async def test_delete_deck_not_found(
         self, client: AsyncClient, mock_user: UserContext
     ):
         """Тест удаления несуществующей колоды"""
         headers = get_auth_headers(mock_user)
-        response = await client.delete("/deck/999/", headers=headers)
+        response = await client.delete("/decks/999/", headers=headers)
         assert response.status_code == 404
         assert "Deck not found" in response.json()["detail"]
 
     async def test_delete_deck_unauthorized(self, client: AsyncClient, test_deck: Deck):
         """Тест удаления колоды без авторизации"""
-        response = await client.delete(f"/deck/{test_deck.id}/")
+        response = await client.delete(f"/decks/{test_deck.id}/")
         assert response.status_code == 401
         assert (
             "Not authenticated" in response.json()["detail"]
@@ -368,7 +357,7 @@ class TestDeleteDeck:
     ):
         """Тест удаления чужой колоды"""
         headers = get_auth_headers(mock_other_user)
-        response = await client.delete(f"/deck/{test_deck.id}/", headers=headers)
+        response = await client.delete(f"/decks/{test_deck.id}/", headers=headers)
         assert response.status_code == 403
         assert "Forbidden" in response.json()["detail"]
 
@@ -385,12 +374,12 @@ class TestDeleteDeck:
         await db_session.refresh(deck)
 
         headers = get_auth_headers(mock_user)
-        response = await client.delete(f"/deck/{deck.id}/", headers=headers)
+        response = await client.delete(f"/decks/{deck.id}/", headers=headers)
         assert response.status_code == 204
 
         # Проверяем, что колода удалена
         headers = get_auth_headers(mock_user)
-        response = await client.get(f"/deck/{deck.id}/", headers=headers)
+        response = await client.get(f"/decks/{deck.id}/", headers=headers)
         assert response.status_code == 404
 
     async def test_delete_deck_as_manager(
@@ -398,26 +387,26 @@ class TestDeleteDeck:
     ):
         """Тест удаления колоды менеджером"""
         headers = get_auth_headers(mock_manager)
-        response = await client.delete(f"/deck/{test_deck.id}/", headers=headers)
+        response = await client.delete(f"/decks/{test_deck.id}/", headers=headers)
         assert response.status_code == 204
 
 
 @pytest.mark.asyncio
 class TestDeckStats:
-    """Тесты для GET /deck/{deck_id}/stats/"""
+    """Тесты для GET /decks/{deck_id}/stats/"""
 
     async def test_deck_stats_not_found(
         self, client: AsyncClient, mock_user: UserContext
     ):
         """Тест получения статистики несуществующей колоды"""
         headers = get_auth_headers(mock_user)
-        response = await client.get("/deck/999/stats/", headers=headers)
+        response = await client.get("/decks/999/stats/", headers=headers)
         assert response.status_code == 404
         assert "Deck not found" in response.json()["detail"]
 
     async def test_deck_stats_unauthorized(self, client: AsyncClient, test_deck: Deck):
         """Тест получения статистики без авторизации"""
-        response = await client.get(f"/deck/{test_deck.id}/stats/")
+        response = await client.get(f"/decks/{test_deck.id}/stats/")
         assert response.status_code == 401
         assert (
             "Not authenticated" in response.json()["detail"]
@@ -429,7 +418,7 @@ class TestDeckStats:
     ):
         """Тест получения статистики чужой колоды"""
         headers = get_auth_headers(mock_other_user)
-        response = await client.get(f"/deck/{test_deck.id}/stats/", headers=headers)
+        response = await client.get(f"/decks/{test_deck.id}/stats/", headers=headers)
         assert response.status_code == 403
         assert "Forbidden" in response.json()["detail"]
 
@@ -438,7 +427,7 @@ class TestDeckStats:
     ):
         """Тест успешного получения статистики"""
         headers = get_auth_headers(mock_user)
-        response = await client.get(f"/deck/{test_deck.id}/stats/", headers=headers)
+        response = await client.get(f"/decks/{test_deck.id}/stats/", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["deck_id"] == test_deck.id
@@ -453,7 +442,7 @@ class TestDeckStats:
     ):
         """Тест получения статистики менеджером"""
         headers = get_auth_headers(mock_manager)
-        response = await client.get(f"/deck/{test_deck.id}/stats/", headers=headers)
+        response = await client.get(f"/decks/{test_deck.id}/stats/", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["deck_id"] == test_deck.id

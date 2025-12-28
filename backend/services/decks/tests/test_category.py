@@ -56,7 +56,7 @@ class TestCreateCategory:
         assert response.status_code == 401
         assert (
             "Not authenticated" in response.json()["detail"]
-            or "Unauthenticated" in response.json()["detail"]
+            or "Not authenticated" in response.json()["detail"]
         )
 
     async def test_create_category_forbidden(
@@ -134,7 +134,7 @@ class TestUpdateCategory:
         assert response.status_code == 401
         assert (
             "Not authenticated" in response.json()["detail"]
-            or "Unauthenticated" in response.json()["detail"]
+            or "Not authenticated" in response.json()["detail"]
         )
 
     async def test_update_category_forbidden(
@@ -251,7 +251,7 @@ class TestDeleteCategory:
         assert response.status_code == 401
         assert (
             "Not authenticated" in response.json()["detail"]
-            or "Unauthenticated" in response.json()["detail"]
+            or "Not authenticated" in response.json()["detail"]
         )
 
     async def test_delete_category_forbidden(
