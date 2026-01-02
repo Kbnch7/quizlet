@@ -1,8 +1,12 @@
+import logging
 import os
 from time import time
 
 import httpx
 from dotenv import load_dotenv
+from event_contracts.base import EventEnvelope
+from event_contracts.kafka_producer import KafkaProducer
+from event_contracts.user.v1 import UserRegistered as EventUserRegisteredV1
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 
 from ..core.exceptions import (
@@ -20,6 +24,10 @@ from ..infra.redis_client import get_redis
 from ..schemas import errors_schemas, token_schemas, users_schemas
 
 load_dotenv()
+
+
+logger = logging.getLogger(__name__)
+producer = KafkaProducer(os.getenv("KAFKA_BROKER_URL"))
 
 router = APIRouter(tags=["Auth"])
 
@@ -97,10 +105,8 @@ async def register(
         )
 
     data = users_response.json()
-    access_token = create_access_token(
-        data["id"], is_manager=data["is_manager"])
-    refresh_token = create_refresh_token(
-        data["id"], is_manager=data["is_manager"])
+    access_token = create_access_token(data["id"], is_manager=data["is_manager"])
+    refresh_token = create_refresh_token(data["id"], is_manager=data["is_manager"])
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -109,6 +115,31 @@ async def register(
         samesite="lax",
         max_age=60 * 60 * 24 * 7,
     )
+    payload = EventUserRegisteredV1(
+        user_id=data.get("id"),
+        email=data.get("email"),
+        registered_at=data.get("created_at"),
+    )
+    event = EventEnvelope(
+        event_type="user_registered",
+        event_version=1,
+        occured_at=data.get("created_at"),
+        producer="auth-service",
+        payload=payload.model_dump(),
+    )
+    try:
+        producer.send(
+            topic="user.events",
+            key=str(data.get("id")),
+            value=event.to_json(),
+        )
+    except Exception as e:
+        logger.exception(
+            f"Failed to send user_registered event: {e}",
+            extra={
+                "user_id": data.get("id"),
+            },
+        )
     return token_schemas.AccessToken(access=access_token)
 
 
@@ -164,10 +195,8 @@ async def login(
             status_code=500, detail=f"User service error: {users_response.text}"
         )
     data = users_response.json()
-    access_token = create_access_token(
-        data["id"], is_manager=data["is_manager"])
-    refresh_token = create_refresh_token(
-        data["id"], is_manager=data["is_manager"])
+    access_token = create_access_token(data["id"], is_manager=data["is_manager"])
+    refresh_token = create_refresh_token(data["id"], is_manager=data["is_manager"])
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,

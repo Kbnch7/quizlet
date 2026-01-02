@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
@@ -34,6 +35,7 @@ class UserBaseInfo(BaseModel):
     surname: str
     email: EmailStr
     is_manager: bool
+    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 

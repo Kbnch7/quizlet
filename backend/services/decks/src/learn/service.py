@@ -1,11 +1,25 @@
-from typing import Optional
+import logging
+import os
 import random
 from datetime import datetime, timezone
+from typing import Optional
 
-from sqlalchemy import select, and_
+from event_contracts.base import EventEnvelope
+from event_contracts.kafka_producer import KafkaProducer
+from event_contracts.learning.v1 import (
+    LearningSessionFinished as EventLearningSessionFinished,
+)
+from event_contracts.learning.v1 import (
+    LearningSessionStarted as EventLearningSessionStarted,
+)
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.entities import Card, Deck, UserCardStats, LearnSession
+from src.entities import Card, Deck, LearnSession, UserCardStats
+
+logger = logging.getLogger(__name__)
+producer = KafkaProducer(os.getenv("KAFKA_BROKER_URL"))
+
 
 TARGET_STREAK = 3
 W_FAIL = 3.0
@@ -39,9 +53,7 @@ async def start_session(
     if not deck:
         raise ValueError("Deck not found")
 
-    cards_query = await session.execute(
-        select(Card.id).where(Card.deck_id == deck_id)
-    )
+    cards_query = await session.execute(select(Card.id).where(Card.deck_id == deck_id))
     card_ids = cards_query.scalars().all()
     total_cards = len(card_ids)
 
@@ -56,6 +68,35 @@ async def start_session(
     )
     session.add(learn_session)
     await session.flush()
+
+    payload = EventLearningSessionStarted(
+        session_id=learn_session.id,
+        user_id=learn_session.user_id,
+        deck_id=learn_session.deck_id,
+        started_at=learn_session.started_at,
+    )
+    event = EventEnvelope(
+        event_type="learning_session_started",
+        event_version=1,
+        occured_at=learn_session.started_at,
+        producer="decks-service",
+        payload=payload.model_dump(),
+    )
+    try:
+        producer.send(
+            topic="learning.events",
+            key=str(learn_session.user_id),
+            value=event.to_json(),
+        )
+    except Exception as e:
+        logger.exception(
+            f"Failed to send learning_session_started event: {e}",
+            extra={
+                "session_id": learn_session.id,
+                "user_id": user_id,
+                "deck_id": deck_id,
+            },
+        )
 
     await update_session_progress(session, learn_session, user_id)
     return learn_session
@@ -78,8 +119,7 @@ async def ensure_user_card_stats(
 
     existing_query = await session.execute(
         select(UserCardStats.card_id).where(
-            (UserCardStats.user_id == user_id)
-            & (UserCardStats.card_id.in_(card_ids))
+            (UserCardStats.user_id == user_id) & (UserCardStats.card_id.in_(card_ids))
         )
     )
     existing = set(existing_query.scalars().all())
@@ -180,8 +220,7 @@ async def get_next_card(
         select(UserCardStats, Card)
         .join(Card, Card.id == UserCardStats.card_id)
         .where(
-            (Card.deck_id == learn_session.deck_id)
-            & (UserCardStats.user_id == user_id)
+            (Card.deck_id == learn_session.deck_id) & (UserCardStats.user_id == user_id)
         )
     )
     rows = stats_query.all()
@@ -195,9 +234,7 @@ async def get_next_card(
         return None
 
     max_weight = max(weighted, key=lambda x: x[0])[0]
-    top_cards = [
-        card_id for weight, card_id in weighted if weight == max_weight
-    ]
+    top_cards = [card_id for weight, card_id in weighted if weight == max_weight]
     return random.choice(top_cards) if top_cards else None
 
 
@@ -211,8 +248,7 @@ async def record_answer(
 ) -> None:
     stats_query = await session.execute(
         select(UserCardStats).where(
-            (UserCardStats.user_id == user_id)
-            & (UserCardStats.card_id == card_id)
+            (UserCardStats.user_id == user_id) & (UserCardStats.card_id == card_id)
         )
     )
     stats = stats_query.scalars().first()
@@ -263,8 +299,7 @@ async def update_session_progress(
         select(UserCardStats.is_learned)
         .join(Card, Card.id == UserCardStats.card_id)
         .where(
-            (Card.deck_id == learn_session.deck_id)
-            & (UserCardStats.user_id == user_id)
+            (Card.deck_id == learn_session.deck_id) & (UserCardStats.user_id == user_id)
         )
     )
     stats = stats_query.scalars().all()
@@ -281,9 +316,43 @@ async def update_session_progress(
     await session.flush()
 
 
-async def finish_session(
-    session: AsyncSession, learn_session: LearnSession
-) -> None:
+async def finish_session(session: AsyncSession, learn_session: LearnSession) -> None:
     learn_session.status = "completed"
     learn_session.ended_at = datetime.now(timezone.utc)
     await session.flush()
+
+    delta = learn_session.ended_at - learn_session.started_at
+    time_delta_sec = int(delta.total_seconds())
+
+    payload = EventLearningSessionFinished(
+        session_id=learn_session.id,
+        user_id=learn_session.user_id,
+        deck_id=learn_session.deck_id,
+        finished_at=learn_session.started_at,
+        total_cards_seen=learn_session.total_cards,
+        learned_cards=learn_session.learned_cards,
+        duration_sec=time_delta_sec,
+        completed=learn_session.total_cards == learn_session.learned_cards,
+    )
+    event = EventEnvelope(
+        event_type="learning_session_finished",
+        event_version=1,
+        occured_at=learn_session.ended_at,
+        producer="decks-service",
+        payload=payload.model_dump(),
+    )
+    try:
+        producer.send(
+            topic="learning.events",
+            key=str(learn_session.user_id),
+            value=event.to_json(),
+        )
+    except Exception as e:
+        logger.exception(
+            f"Failed to send learning_session_started event: {e}",
+            extra={
+                "session_id": learn_session.id,
+                "user_id": learn_session.user_id,
+                "deck_id": learn_session.deck_id,
+            },
+        )

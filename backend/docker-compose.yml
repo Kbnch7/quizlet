@@ -67,6 +67,7 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS}
       USERS_SERVICE_URL: ${USERS_SERVICE_URL}
+      KAFKA_BROKER_URL: ${KAFKA_BROKER_URL}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: 0
@@ -107,11 +108,14 @@ services:
       - MINIO_SECURE=${MINIO_SECURE}
       - MINIO_BUCKET_CARDS=${MINIO_BUCKET_CARDS}
       - GATEWAY_SECRET=${GATEWAY_SECRET}
+      - KAFKA_BROKER_URL=${KAFKA_BROKER_URL}
     depends_on:
       - postgres-decks
       - minio
+      - kafka
     volumes:
       - ./services/decks/src:/app/src
+      - ./libs/event_contracts:/event_contracts
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 
   postgres-decks:
@@ -123,6 +127,11 @@ services:
     volumes:
       # - postgres_data:/var/lib/postgresql/data
       - ./var/decks_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - "5435:5432"
 
@@ -173,6 +182,7 @@ services:
       - USERS_SERVICE_URL=${USERS_SERVICE_URL}
       - SECRET_KEY=${SECRET_KEY:-django-insecure-dev-key}
       - DEBUG=${DEBUG:-True}
+      - KAFKA_BROKER_URL=${KAFKA_BROKER_URL}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,api}
       - GATEWAY_SECRET=${GATEWAY_SECRET}
       - PYTHONUNBUFFERED=1
@@ -230,6 +240,82 @@ services:
       - users
       - decks
       - teaching
+
+  events-collector:
+    build:
+      context: ./services/events_collector
+    ports:
+      - 8006:8000
+    restart: always
+    volumes:
+      - ./services/events_collector/src:/app/src
+    depends_on:
+      - kafka
+      - clickhouse
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BROKER_URL}
+      KAFKA_GROUP_ID: events-collector
+      KAFKA_TOPICS: learning.events,course.events,content.events,user.events
+      CLICKHOUSE_HOST: ${CLICKHOUSE_HOST}
+      CLICKHOUSE_PORT: ${CLICKHOUSE_PORT}
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE}
+      CLICKHOUSE_USER_WRITER: analytics_writer
+      CLICKHOUSE_PASSWORD_WRITER: ${CLICKHOUSE_PASSWORD_WRITER}
+      CLICKHOUSE_USER_READER: analytics_reader
+      CLICKHOUSE_PASSWORD_READER: ${CLICKHOUSE_PASSWORD_READER}
+      PYTHONUNBUFFERED: 1
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      CLUSTER_ID: BW5GJ9m7R9uhx8tT8u2Rkg
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+
+      KAFKA_LISTENERS: INTERNAL://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+  clickhouse:
+    build:
+      context: .
+      dockerfile: ./config/clickhouse/Dockerfile
+    container_name: clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ./var/clickhouse:/var/lib/clickhouse
+      - ./config/clickhouse/init:/docker-entrypoint-initdb.d
+      - ./config/clickhouse/init.sql:/init.sql
+    environment:
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE}
+      CLICKHOUSE_USER_WRITER: analytics_writer
+      CLICKHOUSE_PASSWORD_WRITER: ${CLICKHOUSE_PASSWORD_WRITER}
+      CLICKHOUSE_USER_READER: analytics_reader
+      CLICKHOUSE_PASSWORD_READER: ${CLICKHOUSE_PASSWORD_READER}
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
 # volumes:
 #   postgres_data:
 #   redis_data:

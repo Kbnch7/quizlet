@@ -1,0 +1,6 @@
+var/
+.env/
+.venv/
+terraform.*
+.terraform*
+
