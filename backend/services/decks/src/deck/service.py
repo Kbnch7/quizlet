@@ -1,11 +1,19 @@
+import logging
+import os
 from typing import List, Optional
 
-from sqlalchemy import select, delete, insert
-from sqlalchemy.orm import selectinload
+from event_contracts.base import EventEnvelope
+from event_contracts.content.v1 import DeckCreated as EventDeckCreatedV1
+from event_contracts.kafka_producer import KafkaProducer
+from sqlalchemy import delete, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from src.entities import Deck, Category, deck_categories, Tag, deck_tags
+from src.entities import Category, Deck, Tag, deck_categories, deck_tags
 from src.exceptions import CategoryNotFoundError
+
+logger = logging.getLogger(__name__)
+producer = KafkaProducer(os.getenv("KAFKA_BROKER_URL"))
 
 
 async def _get_or_error_categories(
@@ -13,9 +21,7 @@ async def _get_or_error_categories(
 ) -> List[Category]:
     if not slugs:
         return []
-    result = await session.execute(
-        select(Category).where(Category.slug.in_(slugs))
-    )
+    result = await session.execute(select(Category).where(Category.slug.in_(slugs)))
     existing = {c.slug: c for c in result.scalars().all()}
     missing = [slug for slug in slugs if slug not in existing]
     if missing:
@@ -59,9 +65,7 @@ async def list_decks(
     if cursor is not None:
         query = query.where(Deck.id > cursor)
     if category_slug:
-        query = query.join(Deck.categories).where(
-            Category.slug == category_slug
-        )
+        query = query.join(Deck.categories).where(Category.slug == category_slug)
     if tag_slug:
         query = query.join(Deck.tags).where(Tag.slug == tag_slug)
     query = query.order_by(Deck.id.asc()).limit(limit)
@@ -103,6 +107,31 @@ async def create_deck(
             selectinload(Deck.tags),
         )
     )
+
+    payload = EventDeckCreatedV1(
+        deck_id=deck.id, author_id=deck.owner_id, created_at=deck.created_at
+    )
+    event = EventEnvelope(
+        event_type="deck_created",
+        event_version=1,
+        producer="decks-service",
+        occured_at=deck.created_at,
+        payload=payload.model_dump(),
+    )
+    try:
+        producer.send(
+            topic="content.events",
+            key=str(deck.id),
+            value=event.to_json(),
+        )
+    except Exception as e:
+        logger.exception(
+            f"Failed to send deck_created event: {e}",
+            extra={
+                "deck_id": deck.id,
+                "user_id": deck.owner_id,
+            },
+        )
     return result.scalars().first()
 
 
@@ -148,9 +177,7 @@ async def update_deck(
     if tags is not None:
         tgs = await _get_or_create_tags(session, tags)
         await session.flush()
-        await session.execute(
-            delete(deck_tags).where(deck_tags.c.deck_id == deck.id)
-        )
+        await session.execute(delete(deck_tags).where(deck_tags.c.deck_id == deck.id))
         if tgs:
             values = [{"deck_id": deck.id, "tag_id": t.id} for t in tgs]
             await session.execute(insert(deck_tags), values)

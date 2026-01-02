@@ -1,10 +1,21 @@
+import logging
+import os
+
 from common.auth import UserContext
 from common.pagination import EnrolledAtCursorPagination
 from common.permissions import IsEnrollmentStudentOrManager
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from event_contracts.base import EventEnvelope
+from event_contracts.course.v1 import (
+    CourseEnrolled as EventCourseEnrolledV1,
+)
+from event_contracts.course.v1 import (
+    CourseProgressUpdated as CourseProgressUpdatedV1,
+)
+from event_contracts.kafka_producer import KafkaProducer
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -21,6 +32,9 @@ from .serializers import (
     EnrollmentListSerializer,
     EnrollmentUpdateSerializer,
 )
+
+logger = logging.getLogger(__name__)
+producer = KafkaProducer(os.getenv("KAFKA_BROKER_URL"))
 
 
 class EnrollmentViewSet(viewsets.ModelViewSet):
@@ -73,7 +87,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied("Only managers can set student_id")
 
         try:
-            serializer.save(student_id=student_id)
+            enrollment = serializer.save(student_id=student_id)
         except IntegrityError as e:
             if (
                 "unique constraint" in str(e).lower()
@@ -87,6 +101,38 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                     }
                 )
             raise
+
+        def publish_event():
+            payload = EventCourseEnrolledV1(
+                enrollment_id=enrollment.id,
+                course_id=course.id,
+                user_id=enrollment.student_id,
+                enrolled_at=enrollment.enrolled_at,
+            )
+            event = EventEnvelope(
+                event_type="course_enrolled",
+                event_version=1,
+                producer="teaching-service",
+                occured_at=enrollment.enrolled_at,
+                payload=payload.model_dump(),
+            )
+            try:
+                producer.send(
+                    topic="course.events",
+                    key=str(enrollment.id),
+                    value=event.to_json(),
+                )
+            except Exception as e:
+                logger.exception(
+                    f"Failed to send enrollment_created event: {e}",
+                    extra={
+                        "enrollment_id": enrollment.id,
+                        "course_id": course.id,
+                        "user_id": enrollment.student_id,
+                    },
+                )
+
+        transaction.on_commit(publish_event)
 
     def update(self, request, *args, **kwargs):
         return Response(
@@ -158,8 +204,8 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         detail=True, methods=["post"], url_path="decks/(?P<deck_rel_id>\\d+)/complete"
     )
     def deck_complete(self, request, pk=None, deck_rel_id=None):
-        enrollment = self.get_object()
-        course_deck = get_object_or_404(
+        enrollment: Enrollment = self.get_object()
+        course_deck: CourseDeck = get_object_or_404(
             CourseDeck, id=deck_rel_id, course=enrollment.course
         )
 
@@ -174,6 +220,36 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             progress.completed_at = timezone.now()
         progress.last_accessed_at = timezone.now()
         progress.save()
+
+        payload = CourseProgressUpdatedV1(
+            course_id=course_deck.course.id,
+            user_id=enrollment.student_id,
+            deck_id=course_deck.deck_id,
+            progress_percent=float(enrollment.get_progress_percent()),
+            updated_at=progress.last_accessed_at,
+        )
+        event = EventEnvelope(
+            event_type="course_progress_updated",
+            event_version=1,
+            producer="teaching-service",
+            occured_at=enrollment.enrolled_at,
+            payload=payload.model_dump(),
+        )
+        try:
+            producer.send(
+                topic="course.events",
+                key=str(enrollment.id),
+                value=event.to_json(),
+            )
+        except Exception as e:
+            logger.exception(
+                f"Failed to send course_progress_updated event: {e}",
+                extra={
+                    "enrollment_id": enrollment.id,
+                    "course_id": enrollment.course.id,
+                    "user_id": enrollment.student_id,
+                },
+            )
 
         deck_data = DeckWithProgressSerializer(
             course_deck, context={"request": request}

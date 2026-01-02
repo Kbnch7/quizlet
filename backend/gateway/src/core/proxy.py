@@ -34,7 +34,6 @@ async def forward_request(service: str, path: str, request: Request):
             params=request.query_params,
             content=await request.body(),
         )
-
     return Response(
         content=resp.content, status_code=resp.status_code, headers=resp.headers
     )

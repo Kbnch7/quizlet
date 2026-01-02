@@ -1,9 +1,15 @@
+import logging
+import os
+
 from common.auth import UserContext
 from common.clients.decks_client import decks_client
 from common.permissions import IsCourseTeacherOrManager
 from django.db import transaction
 from django.db.models import Q
 from drf_spectacular.utils import OpenApiParameter, extend_schema
+from event_contracts.base import EventEnvelope
+from event_contracts.course.v1 import CourseCreated as EventCourseCreatedV1
+from event_contracts.kafka_producer import KafkaProducer
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -20,6 +26,9 @@ from .serializers import (
     CourseListSerializer,
     CourseUpdateSerializer,
 )
+
+logger = logging.getLogger(__name__)
+producer = KafkaProducer(os.getenv("KAFKA_BROKER_URL"))
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -64,7 +73,37 @@ class CourseViewSet(viewsets.ModelViewSet):
             if not user.is_manager:
                 raise PermissionDenied("Only managers can set teacher_id")
 
-        serializer.save(teacher_id=teacher_id)
+        course = serializer.save(teacher_id=teacher_id)
+
+        def publish_event():
+            payload = EventCourseCreatedV1(
+                course_id=course.id,
+                author_id=course.teacher_id,
+                created_at=course.created_at,
+            )
+            event = EventEnvelope(
+                event_type="course_created",
+                event_version=1,
+                producer="teaching-service",
+                occured_at=course.created_at,
+                payload=payload.model_dump(),
+            )
+            try:
+                producer.send(
+                    topic="course.events",
+                    key=str(course.id),
+                    value=event.to_json(),
+                )
+            except Exception as e:
+                logger.exception(
+                    f"Failed to send course_created event: {e}",
+                    extra={
+                        "course": course.id,
+                        "user_id": course.teacher_id,
+                    },
+                )
+
+        transaction.on_commit(publish_event)
 
     def get_permissions(self):
         deck_actions = [
@@ -241,7 +280,6 @@ class CourseViewSet(viewsets.ModelViewSet):
         if not items:
             raise ValidationError({"detail": "List cannot be empty"})
 
-        # Валидация входных данных
         deck_ids = []
         for item in items:
             if not isinstance(item, dict):
@@ -253,11 +291,9 @@ class CourseViewSet(viewsets.ModelViewSet):
                 raise ValidationError({"detail": "deck_id must be int"})
             deck_ids.append(deck_id)
 
-        # Проверка на дубликаты во входных данных
         if len(deck_ids) != len(set(deck_ids)):
             raise ValidationError({"detail": "Duplicate deck_ids in request"})
 
-        # Проверка, что колоды еще не привязаны к курсу
         existing_deck_ids = set(
             course.course_decks.filter(deck_id__in=deck_ids).values_list(
                 "deck_id", flat=True
@@ -270,14 +306,11 @@ class CourseViewSet(viewsets.ModelViewSet):
                 }
             )
 
-        # Проверка прав на все колоды
         for deck_id in deck_ids:
             self._check_deck_permissions(deck_id, course, user)
 
-        # Получаем начальный order_index
         start_order_index = self._get_next_order_index(course)
 
-        # Создаем все CourseDeck записи
         created_decks = []
         with transaction.atomic():
             for idx, deck_id in enumerate(deck_ids):

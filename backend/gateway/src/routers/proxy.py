@@ -11,5 +11,4 @@ router = APIRouter()
 async def proxy(service: str, path: str, request: Request):
     if service not in SERVICE_MAP:
         raise HTTPException(404, "Service not found")
-
     return await forward_request(service, path, request)
