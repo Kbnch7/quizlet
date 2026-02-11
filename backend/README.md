@@ -19,6 +19,7 @@ docker compose up
 Создание топиков в kafka с помощью terraform
 
 ```
+cd kafka
 terraform init
 terraform plan
 terraform apply

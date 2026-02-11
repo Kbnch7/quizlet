@@ -150,6 +150,7 @@ services:
     environment:
       - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
       - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
     entrypoint: /bin/sh
     command: -c "
       minio server /data --console-address ':9001' & \
@@ -342,7 +343,7 @@ services:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
-      - GF_SERVER_ROOT_URL=/grafana
+      # - GF_SERVER_ROOT_URL=/grafana
     volumes:
       - ./var/grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning

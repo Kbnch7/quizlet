@@ -7,8 +7,14 @@ scrape_configs:
     static_configs:
       - targets: ["localhost:9090"]
 
-  - job_name: "decks"
+  - job_name: "decks_service"
     static_configs:
       - targets: ["host.docker.internal:8001"]
     scrape_interval: 5s
     metrics_path: /metrics
+
+  - job_name: "minio_storage"
+    static_configs:
+      - targets: ["host.docker.internal:9000"]
+    scrape_interval: 5s
+    metrics_path: /minio/v2/metrics/cluster
