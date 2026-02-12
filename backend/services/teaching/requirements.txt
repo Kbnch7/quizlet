@@ -5,4 +5,5 @@ psycopg2-binary
 python-dotenv
 httpx
 drf-spectacular
+prometheus_client
 

@@ -68,7 +68,7 @@
       "pluginVersion": "12.3.2",
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total[5m]))",
+          "expr": "sum(rate(teaching_http_requests_total[5m]))",
           "refId": "A"
         }
       ],
@@ -122,7 +122,7 @@
       "pluginVersion": "12.3.2",
       "targets": [
         {
-          "expr": "sum(rate(http_errors_5xx_total[5m])) / sum(rate(http_requests_total[5m])) * 100",
+          "expr": "sum(rate(teaching_http_errors_5xx_total[5m])) / sum(rate(teaching_http_requests_total[5m])) * 100",
           "refId": "A"
         }
       ],
@@ -176,7 +176,7 @@
       "pluginVersion": "12.3.2",
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(teaching_http_request_duration_seconds_bucket[5m])) by (le))",
           "refId": "A"
         }
       ],
@@ -230,7 +230,7 @@
       "pluginVersion": "12.3.2",
       "targets": [
         {
-          "expr": "sum(increase(http_requests_total{endpoint=~\"$endpoint\"}[24h]))",
+          "expr": "sum(increase(teaching_http_requests_total{endpoint=~\"$endpoint\"}[24h]))",
           "refId": "A"
         }
       ],
@@ -317,7 +317,7 @@
       "pluginVersion": "12.3.2",
       "targets": [
         {
-          "expr": "sum(rate(api_calls_total{api_type=~\"$api_type\"}[5m])) by (api_type)",
+          "expr": "sum(rate(teaching_api_calls_total{api_type=~\"$api_type\"}[5m])) by (api_type)",
           "refId": "A"
         }
       ],
@@ -404,7 +404,7 @@
       "pluginVersion": "12.3.2",
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{endpoint=~\"$endpoint\"}[5m])) by (endpoint)",
+          "expr": "sum(rate(teaching_http_requests_total{endpoint=~\"$endpoint\"}[5m])) by (endpoint)",
           "refId": "A"
         }
       ],
@@ -491,7 +491,7 @@
       "pluginVersion": "12.3.2",
       "targets": [
         {
-          "expr": "sum(rate(http_errors_4xx_total{endpoint=~\"$endpoint\"}[5m])) by (endpoint)",
+          "expr": "sum(rate(teaching_http_errors_4xx_total{endpoint=~\"$endpoint\"}[5m])) by (endpoint)",
           "refId": "A"
         }
       ],
@@ -578,98 +578,11 @@
       "pluginVersion": "12.3.2",
       "targets": [
         {
-          "expr": "sum(rate(http_errors_5xx_total{endpoint=~\"$endpoint\"}[5m])) by (endpoint)",
+          "expr": "sum(rate(teaching_http_errors_5xx_total{endpoint=~\"$endpoint\"}[5m])) by (endpoint)",
           "refId": "A"
         }
       ],
       "title": "5xx Errors",
-      "type": "timeseries"
-    },
-    {
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 20
-      },
-      "id": 9,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.2",
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{endpoint=~\"$endpoint\"}[5m])) by (le, endpoint))",
-          "refId": "A"
-        }
-      ],
-      "title": "P95 Latency by Endpoint",
       "type": "timeseries"
     },
     {
@@ -696,9 +609,9 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 28
+        "y": 20
       },
-      "id": 10,
+      "id": 9,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -719,11 +632,11 @@
       "pluginVersion": "12.3.2",
       "targets": [
         {
-          "expr": "increase(decks_created_total[1h])",
+          "expr": "increase(teaching_courses_created_total[1h])",
           "refId": "A"
         }
       ],
-      "title": "Decks Created (1h)",
+      "title": "Courses Created (1h)",
       "type": "stat"
     },
     {
@@ -750,9 +663,9 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 28
+        "y": 20
       },
-      "id": 11,
+      "id": 10,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -773,11 +686,11 @@
       "pluginVersion": "12.3.2",
       "targets": [
         {
-          "expr": "increase(decks_updated_total[1h])",
+          "expr": "increase(teaching_courses_updated_total[1h])",
           "refId": "A"
         }
       ],
-      "title": "Decks Updated (1h)",
+      "title": "Courses Updated (1h)",
       "type": "stat"
     },
     {
@@ -804,7 +717,61 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 28
+        "y": 20
+      },
+      "id": 11,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.3.2",
+      "targets": [
+        {
+          "expr": "increase(teaching_enrollments_created_total[1h])",
+          "refId": "A"
+        }
+      ],
+      "title": "Enrollments Created (1h)",
+      "type": "stat"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 20
       },
       "id": 12,
       "options": {
@@ -827,16 +794,53 @@
       "pluginVersion": "12.3.2",
       "targets": [
         {
-          "expr": "increase(cards_created_total[1h])",
+          "expr": "increase(teaching_enrollments_canceled_total[1h])",
           "refId": "A"
         }
       ],
-      "title": "Cards Created (1h)",
+      "title": "Enrollments Canceled (1h)",
       "type": "stat"
     },
     {
       "fieldConfig": {
         "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -855,212 +859,13 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 12,
-        "y": 28
-      },
-      "id": 13,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.3.2",
-      "targets": [
-        {
-          "expr": "increase(card_presign_image_requests_total[1h])",
-          "refId": "A"
-        }
-      ],
-      "title": "Presign Image Requests (1h)",
-      "type": "stat"
-    },
-    {
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 16,
-        "y": 28
-      },
-      "id": 14,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.3.2",
-      "targets": [
-        {
-          "expr": "increase(learn_sessions_started_total[1h])",
-          "refId": "A"
-        }
-      ],
-      "title": "Learn Sessions Started (1h)",
-      "type": "stat"
-    },
-    {
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 20,
-        "y": 28
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
       },
       "id": 15,
       "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.3.2",
-      "targets": [
-        {
-          "expr": "increase(learn_sessions_completed_total[1h])",
-          "refId": "A"
-        }
-      ],
-      "title": "Learn Sessions Completed (1h)",
-      "type": "stat"
-    },
-    {
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 32
-      },
-      "id": 16,
-      "options": {
         "legend": {
           "calcs": [],
           "displayMode": "list",
@@ -1076,181 +881,7 @@
       "pluginVersion": "12.3.2",
       "targets": [
         {
-          "expr": "sum(rate(background_task_duration_seconds_sum[5m])) / sum(rate(background_task_duration_seconds_count[5m]))",
-          "refId": "A"
-        }
-      ],
-      "title": "Background Task Avg Duration",
-      "type": "timeseries"
-    },
-    {
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 32
-      },
-      "id": 17,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.2",
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(background_task_duration_seconds_bucket[5m])) by (le, task_type))",
-          "refId": "A"
-        }
-      ],
-      "title": "Background Task P95 by Type",
-      "type": "timeseries"
-    },
-    {
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 40
-      },
-      "id": 18,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.2",
-      "targets": [
-        {
-          "expr": "sum(rate(process_cpu_seconds_total{job=\"decks_service\"}[5m]))",
+          "expr": "sum(rate(process_cpu_seconds_total{job=\"teaching_service\"}[5m]))",
           "refId": "A"
         }
       ],
@@ -1267,10 +898,10 @@
       {
         "current": {
           "text": [
-            "/metrics"
+            "/api/"
           ],
           "value": [
-            "/metrics"
+            "/api/"
           ]
         },
         "datasource": "Prometheus",
@@ -1278,7 +909,7 @@
         "multi": true,
         "name": "endpoint",
         "options": [],
-        "query": "label_values(http_requests_total, endpoint)",
+        "query": "label_values(teaching_http_requests_total, endpoint)",
         "refresh": 1,
         "type": "query"
       },
@@ -1296,7 +927,7 @@
         "multi": true,
         "name": "api_type",
         "options": [],
-        "query": "label_values(api_calls_total, api_type)",
+        "query": "label_values(teaching_api_calls_total, api_type)",
         "refresh": 1,
         "type": "query"
       }
@@ -1308,6 +939,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "decks_service",
-  "version": 4
+  "title": "teaching_service",
+  "version": 1
 }
+

@@ -37,7 +37,7 @@ async def metrics_middleware(request: Request, call_next):
     if route and hasattr(route, "path"):
         endpoint = route.path
     else:
-        endpoint = request.url.path
+        endpoint = "/unknown"
 
     method = request.method
     status_code = str(response.status_code)

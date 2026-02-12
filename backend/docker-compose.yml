@@ -26,6 +26,12 @@ services:
       - ./var/redis_data:/data
     command: ["redis-server", "--appendonly", "yes"]
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   users:
     build:
@@ -76,6 +82,9 @@ services:
     depends_on:
       users:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
     volumes:
       - ./services/auth/src:/app/src
     # command: >
@@ -184,7 +193,7 @@ services:
       - SECRET_KEY=${SECRET_KEY:-django-insecure-dev-key}
       - DEBUG=${DEBUG:-True}
       - KAFKA_BROKER_URL=${KAFKA_BROKER_URL}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,api}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,api,host.docker.internal}
       - GATEWAY_SECRET=${GATEWAY_SECRET}
       - PYTHONUNBUFFERED=1
     depends_on:
