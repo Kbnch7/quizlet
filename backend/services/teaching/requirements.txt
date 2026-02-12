@@ -1,0 +1,9 @@
+git+https://github.com/delawer33/quizlet_event_contracts@dev
+Django>=5.0
+djangorestframework>=3.14
+psycopg2-binary
+python-dotenv
+httpx
+drf-spectacular
+prometheus_client
+

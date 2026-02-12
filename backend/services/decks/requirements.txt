@@ -1,0 +1,11 @@
+git+https://github.com/delawer33/quizlet_event_contracts@dev
+fastapi
+uvicorn
+sqlalchemy
+alembic
+psycopg2-binary
+python-dotenv
+asyncpg
+minio
+prometheus_client
+confluent-kafka==2.12.2

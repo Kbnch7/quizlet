@@ -1,0 +1,25 @@
+{% extends 'test_views/base.html' %}
+
+{% block title %}{{ course.title }}{% endblock %}
+
+{% block content %}
+<h1>{{ course.title }}</h1>
+<p>{{ course.description|default:"Нет описания" }}</p>
+<p>Преподаватель: {{ course.teacher_id }}</p>
+<p>Создан: {{ course.created_at }}</p>
+
+<h2>Уроки</h2>
+<ul>
+    {% for item in lessons_with_decks %}
+    <li>
+        <a href="/lessons/{{ item.lesson.id }}/">{{ item.lesson.title }}</a>
+        {% if item.deck %}
+            (Колода: {{ item.deck.title }})
+        {% endif %}
+    </li>
+    {% empty %}
+    <li>Уроки не найдены</li>
+    {% endfor %}
+</ul>
+{% endblock %}
+

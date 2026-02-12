@@ -1,0 +1,24 @@
+from sqlalchemy import Column, Integer, Boolean, ForeignKey, Text, Float
+from sqlalchemy.orm import relationship
+
+from . import Base
+
+
+class CardResult(Base):
+    __tablename__ = "card_results"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    test_result_id = Column(
+        Integer,
+        ForeignKey("test_results.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    user_id = Column(Integer, nullable=False)
+    card_id = Column(
+        Integer, ForeignKey("cards.id", ondelete="CASCADE"), nullable=False
+    )
+    correct = Column(Boolean, nullable=False)
+    answer_time_seconds = Column(Integer, nullable=False)
+    user_answer = Column(Text, nullable=True)
+
+    test_result = relationship("TestResult", back_populates="card_results")
