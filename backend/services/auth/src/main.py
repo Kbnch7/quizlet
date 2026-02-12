@@ -3,9 +3,13 @@ from http import HTTPStatus
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
+
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from .api import routes
+from .monitoring.middleware import MetricsMiddleware
+from .monitoring.common import registry
 from .infra.redis_client import redis_manager
 from .schemas.errors_schemas import CustomError
 
@@ -28,6 +32,8 @@ app = FastAPI(
     title="Auth service", version="1.0.0", lifespan=lifespan, docs_url="/api/docs"
 )
 
+app.middleware("http")(MetricsMiddleware(app))
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -37,6 +43,11 @@ app.add_middleware(
 )
 
 app.include_router(routes.router, prefix="/api")
+
+
+@app.get("/metrics")
+async def metrics():
+    return PlainTextResponse(generate_latest(registry), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.exception_handler(HTTPException)

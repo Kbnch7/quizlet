@@ -10,6 +10,10 @@ import src.card.service as service
 from src.auth import UserContext, get_current_user, is_authorized_for_resource
 from src.database.core import get_async_db_session
 from src.entities import Deck
+from src.monitoring.business_metrics import (
+    card_presign_image_requests_total,
+    cards_created_total,
+)
 from src.utils.storage import BUCKET_CARDS, get_storage_client
 
 from .models import (
@@ -40,11 +44,9 @@ def _presign_card_images(card):
     bucket = BUCKET_CARDS
     signer = _signer_client()
     if card.front_image_url and not card.front_image_url.startswith("temp/"):
-        card.front_image_url = signer.presigned_get_url(
-            bucket, card.front_image_url)
+        card.front_image_url = signer.presigned_get_url(bucket, card.front_image_url)
     if card.back_image_url and not card.back_image_url.startswith("temp/"):
-        card.back_image_url = signer.presigned_get_url(
-            bucket, card.back_image_url)
+        card.back_image_url = signer.presigned_get_url(bucket, card.back_image_url)
 
 
 @router.post("/{deck_id}/cards", response_model=SCardResponse)
@@ -65,6 +67,7 @@ async def create_card(
         raise HTTPException(status_code=403, detail="Forbidden")
     card = await service.create_card(session, deck_id=deck_id, **payload.model_dump())
     await session.commit()
+    cards_created_total.inc()
     _presign_card_images(card)
     return card
 
@@ -177,6 +180,7 @@ async def presign_card_image(
     object_key = f"temp/{user.id}/uploads/{uuid4().hex}{ext_part}"
     put_url = client.presigned_put_url(MINIO_BUCKET_CARDS, object_key)
     get_url = client.presigned_get_url(MINIO_BUCKET_CARDS, object_key)
+    card_presign_image_requests_total.inc()
     return SPresignUploadResponse(
         put_url=put_url, get_url=get_url, object_key=object_key
     )

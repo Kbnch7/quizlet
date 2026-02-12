@@ -17,7 +17,7 @@ async def get_current_user(
     x_gateway_auth: str = Header(...),
     x_user_id: Optional[int] = Header(None),
     x_user_ismanager: Optional[bool] = Header(None),
-) -> Optional[UserContext]:
+) -> UserContext:
     if x_gateway_auth != GATEWAY_SECRET:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Invalid gateway"
