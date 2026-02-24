@@ -1,3 +1,4 @@
+import time
 from typing import List, Optional
 
 from fastapi import (
@@ -16,6 +17,7 @@ from src.auth import UserContext, get_current_user, is_authorized_for_resource
 from src.database.core import async_session_maker, get_async_db_session
 from src.deck_stats.service import update_deck_stats
 from src.entities import Card, Deck, TestResult
+from src.monitoring.background_tasks_metrics import background_task_duration_seconds
 
 from .models import STestResultCreate, STestResultResponse
 from .service import create_test_result, list_test_results
@@ -24,6 +26,7 @@ router = APIRouter(prefix="/api/deck", tags=["test_result"])
 
 
 async def _update_stats_background(test_result_id: int, deck_id: int) -> None:
+    start_tm = time.time()
     async with async_session_maker() as session:
         try:
             result = await session.execute(
@@ -42,6 +45,11 @@ async def _update_stats_background(test_result_id: int, deck_id: int) -> None:
                     card_results=test_result.card_results,
                 )
                 await session.commit()
+            duration = time.time() - start_tm
+            background_task_duration_seconds.labels(
+                task_type="update_after_test"
+            ).observe(duration)
+
         except Exception:
             await session.rollback()
 
@@ -67,8 +75,7 @@ async def create_result(
     card_ids = {cr.card_id for cr in payload.card_results}
     if card_ids:
         cards_query = await session.execute(
-            select(Card.id).where((Card.id.in_(card_ids))
-                                  & (Card.deck_id == deck_id))
+            select(Card.id).where((Card.id.in_(card_ids)) & (Card.deck_id == deck_id))
         )
         valid_ids = set(cards_query.scalars().all())
         invalid = card_ids - valid_ids

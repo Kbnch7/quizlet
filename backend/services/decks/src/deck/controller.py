@@ -7,6 +7,7 @@ import src.deck.service as deck_service
 from src.auth import UserContext, get_current_user, is_authorized_for_resource
 from src.database.core import get_async_db_session
 from src.deck_stats.service import get_deck_stats
+from src.monitoring.business_metrics import decks_created_total, decks_updated_total
 from src.utils.storage import BUCKET_CARDS, get_storage_client
 
 from .models import (
@@ -45,9 +46,9 @@ async def get_decks(
     author: Optional[int] = Query(default=None),
     category: Optional[str] = Query(default=None),
     tag: Optional[str] = Query(default=None),
-    my_teachers: Optional[bool] = Query(
-        default=None
-    ),  # stubbed, not used TODO: my_teachers
+    # my_teachers: Optional[bool] = Query(
+    #     default=None
+    # )
     cursor: Optional[int] = Query(default=None),
     limit: int = Query(default=20, le=100),
     session: AsyncSession = Depends(get_async_db_session),
@@ -69,7 +70,7 @@ async def get_decks(
 async def create_deck(
     payload: SDeckCreate,
     session: AsyncSession = Depends(get_async_db_session),
-    user: Optional[UserContext] = Depends(get_current_user),
+    user: UserContext = Depends(get_current_user),
 ):
     if payload.owner_id is not None:
         if not user.is_manager:
@@ -86,6 +87,7 @@ async def create_deck(
         tags=payload.tags,
     )
     await session.commit()
+    decks_created_total.inc()
     _presign_deck_cards(deck)
     return deck
 
@@ -107,7 +109,7 @@ async def update_deck(
     deck_id: int,
     payload: SDeckUpdate,
     session: AsyncSession = Depends(get_async_db_session),
-    user: Optional[UserContext] = Depends(get_current_user),
+    user: UserContext = Depends(get_current_user),
 ):
     deck = await deck_service.get_deck(session, deck_id)
     if deck is None:
@@ -123,6 +125,7 @@ async def update_deck(
         tags=payload.tags,
     )
     await session.commit()
+    decks_updated_total.inc()
     _presign_deck_cards(deck)
     return deck
 
@@ -131,7 +134,7 @@ async def update_deck(
 async def delete_deck(
     deck_id: int,
     session: AsyncSession = Depends(get_async_db_session),
-    user: Optional[UserContext] = Depends(get_current_user),
+    user: UserContext = Depends(get_current_user),
 ):
     deck = await deck_service.get_deck(session, deck_id)
     if deck is None:
@@ -147,7 +150,7 @@ async def delete_deck(
 async def deck_stats(
     deck_id: int,
     session: AsyncSession = Depends(get_async_db_session),
-    user: Optional[UserContext] = Depends(get_current_user),
+    user: UserContext = Depends(get_current_user),
 ):
     deck = await deck_service.get_deck(session, deck_id)
     if deck is None:

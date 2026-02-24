@@ -21,6 +21,11 @@ from src.learn.service import (
     start_session,
     update_session_progress,
 )
+from src.monitoring.business_metrics import (
+    learn_sessions_completed_total,
+    learn_sessions_finished_total,
+    learn_sessions_started_total,
+)
 
 router = APIRouter(prefix="/api/learn", tags=["learn"])
 
@@ -66,6 +71,7 @@ async def create_learn_session(
     learn_session = await start_session(session, deck_id, user.id)
     progress = learn_session.learned_cards / max(learn_session.total_cards, 1)
     await session.commit()
+    learn_sessions_started_total.inc()
     return SLearnSessionCreateResponse(
         session=_session_to_response(learn_session),
         progress=progress,
@@ -94,8 +100,7 @@ async def get_next_card_endpoint(
     if not learn_session:
         raise HTTPException(status_code=404, detail="Learn session not found")
     if learn_session.status != "active":
-        raise HTTPException(
-            status_code=400, detail="Learn session is not active")
+        raise HTTPException(status_code=400, detail="Learn session is not active")
 
     card_id = await get_next_card(session, learn_session, user.id)
     await update_session_progress(session, learn_session, user.id)
@@ -126,8 +131,7 @@ async def submit_answer(
     if not learn_session:
         raise HTTPException(status_code=404, detail="Learn session not found")
     if learn_session.status != "active":
-        raise HTTPException(
-            status_code=400, detail="Learn session is not active")
+        raise HTTPException(status_code=400, detail="Learn session is not active")
 
     await record_answer(
         session,
@@ -165,8 +169,10 @@ async def finish_learn_session(
     learn_session = await get_session(session, session_id, user.id)
     if not learn_session:
         raise HTTPException(status_code=404, detail="Learn session not found")
-
     await finish_session(session, learn_session)
     await update_session_progress(session, learn_session, user.id)
     await session.commit()
+    learn_sessions_finished_total.inc()
+    if learn_session.learned_cards == learn_session.total_cards == 1:
+        learn_sessions_completed_total.inc()
     return _progress_response(learn_session)

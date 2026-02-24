@@ -19,6 +19,7 @@ docker compose up
 Создание топиков в kafka с помощью terraform
 
 ```
+cd kafka
 terraform init
 terraform plan
 terraform apply
@@ -51,15 +52,35 @@ docker compose exec decks python3 src/init_db.py
 | Auth API            | [http://localhost:8005](http://localhost:8005) |
 | Decks API           | [http://localhost:8001](http://localhost:8001) |
 | Teaching API        | [http://localhost:8002](http://localhost:8002) |
+| Prometheus          | [http://localhost:9090](http://localhost:9090) |
+| Grafana             | [http://localhost:3000](http://localhost:3000) |
 | MinIO Console       | [http://localhost:9001](http://localhost:9001) |
-| Redis               | localhost:6378                                 |
+| Redis               | [http://localhost:6378](http://localhost:6378) |
 | ClickHouse HTTP     | [http://localhost:8123](http://localhost:8123) |
-| ClickHouse TCP      | localhost:9000                                 |
-| Kafka Broker        | localhost:9092                                 |
-| Kafka UI            | localhost:8080                                 |
-| Users PostgreSQL    | localhost:5433                                 |
-| Decks PostgreSQL    | localhost:5435                                 |
-| Teaching PostgreSQL | localhost:5436                                 |
+| ClickHouse TCP      | [http://localhost:9000](http://localhost:9000) |
+| Kafka Broker        | [http://localhost:9092](http://localhost:9092) |
+| Kafka UI            | [http://localhost:8080](http://localhost:8080) |
+| Users PostgreSQL    | [http://localhost:5433](http://localhost:5433) |
+| Decks PostgreSQL    | [http://localhost:5435](http://localhost:5435) |
+| Teaching PostgreSQL | [http://localhost:5436](http://localhost:5436) |
+
+## Мониторинг и метрики
+
+- **Prometheus**:
+  - Конфиг: `backend/monitoring/prometheus.yml`.
+  - Скрапит `/metrics` у сервисов:
+    - Auth: `http://localhost:8005/metrics` (job `auth_service`),
+    - Decks: `http://localhost:8001/metrics` (job `decks_service`),
+    - Teaching: `http://localhost:8002/metrics` (job `teaching_service`),
+    - MinIO: `http://localhost:9000/minio/v2/metrics/cluster` (job `minio_storage`).
+- **Grafana**:
+  - URL: `http://localhost:3000`.
+  - Дашборды и датасорсы провиженятся из `backend/monitoring/grafana/`:
+    - Дашборды сервисов: `decks_service_dashboard.json`, `teaching_service_dashboard.json`, `auth_service_dashboard.json`.
+- **Типы метрик**:
+  - HTTP-метрики: RPS, latency, 4xx/5xx по endpoint (например, `auth_http_requests_total`, `teaching_http_request_duration_seconds`, `http_requests_total` для decks).
+  - Бизнес-метрики: счётчики доменных событий (создание колод/курсов, регистрации пользователей, логины и т.п.).
+  - Внешние вызовы: метрики запросов из auth в users-сервис (`auth_users_service_requests_total`, `auth_users_service_request_duration_seconds`).
 
 ## Эндпоинты
 

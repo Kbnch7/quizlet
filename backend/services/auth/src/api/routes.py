@@ -9,6 +9,18 @@ from event_contracts.kafka_producer import KafkaProducer
 from event_contracts.user.v1 import UserRegistered as EventUserRegisteredV1
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 
+from ..monitoring.business_metrics import (
+    auth_logins_failed_total,
+    auth_logins_success_total,
+    auth_tokens_refreshed_total,
+    auth_tokens_revoked_total,
+    auth_users_registered_total,
+)
+from ..monitoring.external_metrics import (
+    auth_users_service_request_duration_seconds,
+    auth_users_service_requests_total,
+)
+
 from ..core.exceptions import (
     TokenExpiredException,
     TokenRevokedException,
@@ -42,7 +54,7 @@ async def get_users_client() -> httpx.AsyncClient:
 @router.post(
     "/register",
     status_code=status.HTTP_201_CREATED,
-    response_model=token_schemas.AccessToken,
+    response_model=token_schemas.TokenPair,
     responses={
         409: {
             "model": errors_schemas.CustomError,
@@ -87,10 +99,28 @@ async def register(
     response: Response,
     users_client: httpx.AsyncClient = Depends(get_users_client),
 ):
+    method = "POST"
+    endpoint = "/users"
+    start = time()
     try:
-        users_response = await users_client.post("/users", json=payload.model_dump())
+        users_response = await users_client.post(endpoint, json=payload.model_dump())
+        status_code = users_response.status_code
     except httpx.RequestError:
+        status_code = "request_error"
+        auth_users_service_requests_total.labels(
+            method=method, endpoint=endpoint, status=status_code
+        ).inc()
+        auth_users_service_request_duration_seconds.labels(
+            method=method, endpoint=endpoint
+        ).observe(time() - start)
         raise HTTPException(status_code=502, detail="USER_SERVICE_UNAVAILABLE")
+
+    auth_users_service_requests_total.labels(
+        method=method, endpoint=endpoint, status=str(status_code)
+    ).inc()
+    auth_users_service_request_duration_seconds.labels(
+        method=method, endpoint=endpoint
+    ).observe(time() - start)
     if users_response.status_code == 409:
         raise HTTPException(status_code=409, detail="USER_ALREADY_EXISTS")
     elif users_response.status_code == 422:
@@ -140,13 +170,15 @@ async def register(
                 "user_id": data.get("id"),
             },
         )
-    return token_schemas.AccessToken(access=access_token)
+
+    auth_users_registered_total.inc()
+    return token_schemas.TokenPair(access=access_token, refresh=refresh_token)
 
 
 @router.post(
     "/login",
     status_code=status.HTTP_201_CREATED,
-    response_model=token_schemas.AccessToken,
+    response_model=token_schemas.TokenPair,
     responses={
         404: {
             "model": errors_schemas.CustomError,
@@ -176,21 +208,44 @@ async def login(
     response: Response,
     users_client: httpx.AsyncClient = Depends(get_users_client),
 ):
+    method = "POST"
+    endpoint = "/verify_user"
+    start = time()
     try:
         users_response = await users_client.post(
-            "/verify_user", json=payload.model_dump()
+            endpoint, json=payload.model_dump()
         )
+        status_code = users_response.status_code
     except httpx.RequestError:
+        status_code = "request_error"
+        auth_users_service_requests_total.labels(
+            method=method, endpoint=endpoint, status=status_code
+        ).inc()
+        auth_users_service_request_duration_seconds.labels(
+            method=method, endpoint=endpoint
+        ).observe(time() - start)
+        auth_logins_failed_total.inc()
         raise HTTPException(status_code=502, detail="USER_SERVICE_UNAVAILABLE")
+
+    auth_users_service_requests_total.labels(
+        method=method, endpoint=endpoint, status=str(status_code)
+    ).inc()
+    auth_users_service_request_duration_seconds.labels(
+        method=method, endpoint=endpoint
+    ).observe(time() - start)
+
     if users_response.status_code == 404:
+        auth_logins_failed_total.inc()
         raise HTTPException(status_code=404, detail="USER_NOT_FOUND")
     elif users_response.status_code == 422:
         try:
             error = users_response.json()
         except Exception:
             error = users_response.text
+        auth_logins_failed_total.inc()
         raise HTTPException(status_code=422, detail=error)
     elif users_response.is_error:
+        auth_logins_failed_total.inc()
         raise HTTPException(
             status_code=500, detail=f"User service error: {users_response.text}"
         )
@@ -206,7 +261,9 @@ async def login(
         max_age=60 * 60 * 24 * 7,
     )
 
-    return token_schemas.AccessToken(access=access_token)
+    auth_logins_success_total.inc()
+    return token_schemas.TokenPair(access=access_token, refresh=refresh_token)
+
 
 
 @router.post(
@@ -271,6 +328,8 @@ async def logout(
 
     response.delete_cookie("refresh_token")
 
+    auth_tokens_revoked_total.inc()
+
     return {"detail": "LOGGED_OUT"}
 
 
@@ -331,6 +390,8 @@ async def refresh(
 
     access_token = create_access_token(refresh["sub"], refresh["isman"])
 
+    auth_tokens_refreshed_total.inc()
+
     return token_schemas.AccessToken(access=access_token)
 
 
@@ -384,10 +445,28 @@ async def me(
 
     user_id = access["sub"]
 
+    method = "GET"
+    endpoint = f"/users/id/{user_id}"
+    start = time()
     try:
-        response = await users_client.get(f"/users/id/{user_id}")
+        response = await users_client.get(endpoint)
+        status_code = response.status_code
     except httpx.RequestError:
+        status_code = "request_error"
+        auth_users_service_requests_total.labels(
+            method=method, endpoint=endpoint, status=status_code
+        ).inc()
+        auth_users_service_request_duration_seconds.labels(
+            method=method, endpoint=endpoint
+        ).observe(time() - start)
         raise HTTPException(status_code=502, detail="USER_SERVICE_UNAVAILABLE")
+
+    auth_users_service_requests_total.labels(
+        method=method, endpoint=endpoint, status=str(status_code)
+    ).inc()
+    auth_users_service_request_duration_seconds.labels(
+        method=method, endpoint=endpoint
+    ).observe(time() - start)
 
     if response.status_code == 404:
         raise HTTPException(status_code=404, detail="USER_NOT_FOUND")
